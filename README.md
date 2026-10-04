@@ -150,3 +150,9 @@ Unofficial project, not affiliated with Yandex or Discord. Fork of [FozerG/WinYa
 
 ## Лицензия
 [MIT](LICENSE). Оригинальное уведомление об авторских правах сохранено.
+
+---
+
+> Доработка этого форка (графический интерфейс, режим телефона, исправление ошибок) выполнена с помощью ИИ-ассистента. Результат проверялся автоматическими тестами и в ручном использовании.
+>
+> *This fork (GUI, phone mode, bug fixes) was developed with the help of an AI assistant and checked with automated tests and manual use.*
