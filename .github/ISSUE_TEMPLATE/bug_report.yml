@@ -1,0 +1,65 @@
+name: 🐛 Сообщить об ошибке
+description: Опишите проблему, с которой вы столкнулись
+title: "[Баг]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо, что нашли время сообщить об ошибке!
+        
+        Пожалуйста, убедитесь, что вы используете последнюю версию приложения.
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Проверка существующих предложений
+      description: Я проверил существующие issues и обсуждения
+      options:
+        - label: Я проверил существующие issues и убедился, что подобная проблема отсутствует
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Описание проблемы
+      description: Опишите проблему, с которой вы столкнулись
+      placeholder: "Я столкнулся с проблемой: ..."
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Скриншоты и логи
+      description: |
+        Приложите скриншоты или журнал, если они помогут объяснить проблему.
+        Журнал сохраняется в файле `%LOCALAPPDATA%\WinYandexMusicRPC\app.log` (или вкладка «Журнал» в приложении).
+        Перед отправкой проверьте, что в нём нет ничего личного.
+      placeholder: Вы можете перетащить изображения или файлы сюда
+    validations:
+      required: false
+  - type: input
+    id: os
+    attributes:
+      label: Операционная система
+      description: Какая у вас операционная система?
+      placeholder: "Например: Windows 10 LTSC 21H2"
+    validations:
+      required: true
+  - type: dropdown
+    id: player
+    attributes:
+      label: Где играет музыка
+      description: Где вы слушаете музыку в момент проблемы?
+      options:
+        - Приложение Яндекс Музыка на этом ПК
+        - Телефон (режим телефона)
+        - Браузер
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Версия приложения
+      description: Указана в левом нижнем углу окна (например, v2.5.1)
+      placeholder: "v2.5.1"
+    validations:
+      required: false

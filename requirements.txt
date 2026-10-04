@@ -1,0 +1,22 @@
+# Pinned to the tested commit (the custom card name needs a recent pypresence).
+pypresence @ git+https://github.com/qwertyquerty/pypresence.git@e941a582d0aa920d5e51301fbc9744d6ab4a9603
+winrt-Windows.Foundation.Collections
+winrt-Windows.Storage.Streams
+winrt-Windows.Media.Control
+winrt-Windows.Foundation
+winrt-Windows.Media
+winrt-runtime
+winrt-sdk
+pyinstaller==6.5.0
+PyQt6
+PyQt6-WebEngine
+packaging
+requests
+colorama
+pystray
+keyring
+pywin32
+Pillow
+psutil
+# Ynison (phone mode) exists only in the unreleased main branch; pinned to a tested commit.
+yandex-music[ynison] @ git+https://github.com/MarshalX/yandex-music-api.git@2776335c1fc8e4af2b6ab77e196bde251fc6be49

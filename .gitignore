@@ -1,0 +1,27 @@
+# Build output (the folder is ~570 MB: distribute it as a GitHub Release asset, not in git)
+/build/
+/dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Local runtime files: settings, journal and the self-test report live in
+# %LOCALAPPDATA%\WinYandexMusicRPC, but keep them out of git if they ever land here
+settings.ini
+app.log
+app.log.*
+selftest.txt
+
+# Editors, assistants, OS
+.vscode/
+.idea/
+.claude/
+Thumbs.db
+desktop.ini
+
+# Leftovers from the original project
+/img/
