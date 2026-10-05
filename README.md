@@ -1,8 +1,11 @@
 # <img src="./assets/YMRPC_ico.ico" alt="" width="30"/> &nbsp;Yandex Music RPC: Яндекс Музыка в статусе Discord
 
-![Windows](https://img.shields.io/badge/OS-Windows%2010%20%2F%2011-blue?logo=windows&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python&logoColor=white)
-![License](https://img.shields.io/badge/license-MIT-green)
+[![Downloads](https://img.shields.io/github/downloads/payzik/YandexMusicRPC/total?label=downloads)](https://github.com/payzik/YandexMusicRPC/releases)
+[![Stars](https://img.shields.io/github/stars/payzik/YandexMusicRPC?logo=github)](https://github.com/payzik/YandexMusicRPC/stargazers)
+[![Release](https://img.shields.io/github/v/release/payzik/YandexMusicRPC?label=release)](https://github.com/payzik/YandexMusicRPC/releases/latest)
+[![Language](https://img.shields.io/github/languages/top/payzik/YandexMusicRPC)](https://github.com/payzik/YandexMusicRPC)
+[![OS](https://img.shields.io/badge/OS-Windows%2010%20%2F%2011-blue?logo=windows&logoColor=white)](https://github.com/payzik/YandexMusicRPC/releases/latest)
+[![License](https://img.shields.io/github/license/payzik/YandexMusicRPC)](LICENSE)
 
 **Discord Rich Presence для Яндекс Музыки на Windows.** Показывает в вашем профиле Discord, что вы слушаете: название трека, исполнителя, обложку, прогресс и паузу. Музыку можно слушать в приложении Яндекс Музыка на ПК или **на iPhone и Android** (режим телефона).
 
