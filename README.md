@@ -71,6 +71,10 @@ pyinstaller --noconfirm gui_app.spec
 - Ynison является неофициальным интерфейсом, поэтому в `requirements.txt` закреплён проверенный коммит библиотеки `yandex-music`. Если Яндекс его изменит, режим может перестать работать.
 
 ### Настройки
+<p align="center">
+  <img src="docs/screenshots/settings.png" alt="Yandex Music RPC: настройки приложения" width="620">
+</p>
+
 | Параметр | Что делает |
 |---|---|
 | Тип активности | «Слушает» или «Играет» |
@@ -119,7 +123,7 @@ pyinstaller --noconfirm gui_app.spec
 - Режим телефона через Ynison.
 - Исправлены зависания при повторе трека, при потере медиасессии и при остановке и повторном запуске, а также неверный прогресс и «залипание» карточки; убраны лишние запросы к каталогу.
 - Отмена ожидания Discord, защита от бесконечных повторов ошибок, журнал в файл.
-- Консольный режим (`main.py`), `main.spec` и `InnoScript.iss` остались от оригинала и относятся к старой консольной версии.
+- Консольный режим (`main.py` как точка входа) остался от оригинала и в этой версии не тестировался. Спецификация сборки и установщик старой консольной версии (`main.spec`, `InnoScript.iss`) удалены.
 
 ## English
 **Yandex Music RPC** is a Discord Rich Presence (RPC) app for [Yandex Music](https://music.yandex.ru) on Windows 10/11. It shows the track you are listening to (title, artist, cover, progress, pause state) in your Discord profile as "Listening to Yandex Music".
