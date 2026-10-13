@@ -50,7 +50,7 @@ CLIENT_ID_RU = '1217562797999784007' #Яндекс Музыка
 CLIENT_ID_RU_DECLINED = '1269826362399522849' #Яндекс Музыку (склонение для активности "Слушает")
 
 # Версия (tag) скрипта для проверки на актуальность через Github Releases
-CURRENT_VERSION = "v3.0.0"
+CURRENT_VERSION = "v3.1.0"
 
 # Ссылка на репозиторий
 REPO_URL = "https://github.com/payzik/YandexMusicRPC"
@@ -77,6 +77,9 @@ auto_start_windows = False
 # Режим телефона: показывать в Discord, что играет на телефоне (iOS/Android), читая
 # состояние плеера аккаунта через Ynison. Работает, пока запущен RPC.
 phone_mode = True
+
+# Проверять ли наличие новой версии на GitHub (запрос раз в несколько часов, только чтение).
+check_updates = True
 
 # --------- Переменные ниже являются временными и не требуют изменения.
 # Переменная для хранения предыдущего трека и избежания дублирования обновлений.
@@ -1628,6 +1631,42 @@ def log(text, type = LogType.Default):
     print(f"{red_text}[WinYandexMusicRPC] -> {message_color}{text}{reset_text}")
 
 
+def _repo_slug():
+    """'owner/repo' from REPO_URL, or None if it is not a GitHub repository URL."""
+    m = re.match(r"https://github\.com/([^/]+/[^/]+?)/?$", REPO_URL)
+    return m.group(1) if m else None
+
+
+def check_for_update(current=None, timeout=8):
+    """Ask GitHub for the latest release; return {'version', 'url'} if it is newer, else None.
+
+    Read-only and anonymous: one GET to the public releases API, no token, nothing is
+    downloaded or installed. Any failure (offline, rate limit, no releases) means None.
+    """
+    slug = _repo_slug()
+    if not slug:
+        return None
+    try:
+        r = requests.get(
+            f"https://api.github.com/repos/{slug}/releases/latest",
+            timeout=timeout,
+            headers={"Accept": "application/vnd.github+json", "User-Agent": "YandexMusicRPC-update-check"},
+        )
+        if r.status_code != 200:
+            return None
+        data = r.json()
+        tag = str(data.get("tag_name") or "")
+        if not version.parse(tag.lstrip("vV")) > version.parse((current or CURRENT_VERSION).lstrip("vV")):
+            return None
+        url = str(data.get("html_url") or "")
+        if not url.startswith("https://github.com/"):  # never hand the UI an arbitrary link
+            url = f"{REPO_URL}/releases/latest"
+        return {"version": tag, "url": url}
+    except Exception as e:
+        log_throttled("update-check-failed", f"Update check failed: {e}", LogType.Default, interval=3600.0)
+        return None
+
+
 def GetLastVersion(repoUrl):
     try:
         global CURRENT_VERSION
@@ -1769,6 +1808,7 @@ def get_saves_settings(fromStart = False):
     global auto_start_windows
     global strong_find
     global phone_mode
+    global check_updates
 
     auto_start_windows = is_in_autostart()
     activityType_config = config_manager.get_enum_setting('UserSettings', 'activity_type', ActivityTypeConfig, fallback=ActivityTypeConfig.LISTENING)
@@ -1779,6 +1819,7 @@ def get_saves_settings(fromStart = False):
     strong_find_str = config_manager.get_setting('UserSettings', 'strong_find', fallback='True')  # По умолчанию 'True'
     strong_find = strong_find_str.lower() == 'true'  # Преобразуем строку в булевое значение
     phone_mode = config_manager.get_setting('UserSettings', 'phone_mode', fallback='True').lower() == 'true'
+    check_updates = config_manager.get_setting('UserSettings', 'check_updates', fallback='True').lower() == 'true'
 
     if fromStart:
         log(f"Loaded settings: {Style.RESET_ALL}activityType_config = {activityType_config.name}, button_config = {button_config.name}, language_config = {language_config.name}, strong_find = {strong_find}, phone_mode = {phone_mode}, selected_session = {config_manager.get_selected_session()}", LogType.Update_Status)

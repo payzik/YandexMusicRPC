@@ -33,6 +33,8 @@ INSTANCE_KEY = f"{APP_NAME}-gui-{getpass.getuser()}"
 
 REFRESH_MS = 250          # UI refresh period (only does work when something changed)
 SESSIONS_REFRESH_MS = 5000
+UPDATE_CHECK_FIRST_MS = 8000            # shortly after start, so startup stays fast
+UPDATE_CHECK_EVERY_MS = 6 * 60 * 60 * 1000
 LOG_MAX_LINES = 1000
 COVER_SIZE = 160
 
@@ -86,6 +88,9 @@ STYLE = Template(r'''
     QPushButton#support { background: transparent; border: 0; border-radius: 6px; padding: 5px 8px;
                           text-align: left; color: $muted; font-size: 12px; }
     QPushButton#support:hover { color: $accent_hi; background: $hover; }
+    QPushButton#update { background: rgba(139,92,246,0.16); border: 1px solid $accent_lo; border-radius: 8px;
+                         padding: 6px 10px; text-align: left; color: $accent_hi; font-size: 12px; font-weight: 600; }
+    QPushButton#update:hover { background: rgba(139,92,246,0.28); color: $text; }
     QPushButton#danger { color: $err; }
     QPushButton#danger:hover { border-color: $err; }
 
@@ -300,6 +305,8 @@ class MainWindow(QMainWindow):
         self._cover_url = None
         self._last_state_key = None
         self._instance_server = None
+        self._update_url = None
+        self._update_logged = None
 
         self.setWindowIcon(QIcon(core.Get_IconPath()))
         self.setStyleSheet(STYLE.substitute(
@@ -320,6 +327,11 @@ class MainWindow(QMainWindow):
         self.sessions_timer = QTimer(self)
         self.sessions_timer.timeout.connect(self._refresh_sessions_if_visible)
         self.sessions_timer.start(SESSIONS_REFRESH_MS)
+
+        self.update_timer = QTimer(self)
+        self.update_timer.timeout.connect(self._check_update)
+        self.update_timer.start(UPDATE_CHECK_EVERY_MS)
+        QTimer.singleShot(UPDATE_CHECK_FIRST_MS, self._check_update)
 
         self._refresh_state()
         self._init_account()
@@ -375,6 +387,12 @@ class MainWindow(QMainWindow):
         foot.addWidget(self.status)
         foot.addWidget(version)
         foot.addSpacing(6)
+        self.update_btn = QPushButton()
+        self.update_btn.setObjectName("update")
+        self.update_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.update_btn.clicked.connect(self._open_update)
+        self.update_btn.hide()
+        foot.addWidget(self.update_btn)
         support = QPushButton("♥  Поддержать на Boosty")
         support.setObjectName("support")
         support.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -390,6 +408,29 @@ class MainWindow(QMainWindow):
         self.pages.addWidget(self._scrollable(self._settings_page()))
         self.pages.addWidget(self._sessions_page())
         self.pages.addWidget(self._logs_page())
+
+    def _check_update(self):
+        """Ask GitHub (in a worker thread) whether a newer release exists; never installs anything."""
+        if not core.check_updates:
+            self.update_btn.hide()
+            return
+        self._run_bg(core.check_for_update, self._on_update_result)
+
+    def _on_update_result(self, info):
+        if not info or not core.check_updates:
+            self.update_btn.hide()
+            return
+        self._update_url = info["url"]
+        self.update_btn.setText(f"↑  Доступна {info['version']}")
+        self.update_btn.setToolTip("Открыть страницу загрузки")
+        self.update_btn.show()
+        if self._update_logged != info["version"]:
+            self._update_logged = info["version"]
+            gui_log(f"Доступна новая версия {info['version']}: {info['url']}", core.LogType.Update_Status)
+
+    def _open_update(self):
+        if self._update_url:
+            QDesktopServices.openUrl(QUrl(self._update_url))
 
     @staticmethod
     def _open_support():
@@ -551,6 +592,9 @@ class MainWindow(QMainWindow):
         self.autostart = QCheckBox("Запускать вместе с Windows (сразу в трее, RPC включается сам)")
         self.autostart.toggled.connect(self._toggle_autostart)
         app.body.addWidget(self.autostart)
+        self.updates_cb = QCheckBox("Проверять обновления (раз в несколько часов запрос к GitHub)")
+        self.updates_cb.toggled.connect(self._toggle_updates)
+        app.body.addWidget(self.updates_cb)
         tray_hint = QLabel("Крестик сворачивает окно в трей — RPC продолжает работать. Полный выход: меню значка в трее.")
         tray_hint.setObjectName("muted")
         tray_hint.setWordWrap(True)
@@ -728,7 +772,7 @@ class MainWindow(QMainWindow):
     def _load_settings_to_ui(self):
         # Programmatic changes must not fire _save_settings/_set_session: they would
         # write half-loaded widget values (defaults) back over the saved config.
-        guarded = (self.activity, self.buttons, self.language, self.strong, self.autostart, self.session_box, self.phone_cb)
+        guarded = (self.activity, self.buttons, self.language, self.strong, self.autostart, self.session_box, self.phone_cb, self.updates_cb)
         for w in guarded:
             w.blockSignals(True)
         try:
@@ -744,6 +788,7 @@ class MainWindow(QMainWindow):
             select(self.language, core.language_config)
             self.strong.setChecked(bool(core.strong_find))
             self.phone_cb.setChecked(bool(core.phone_mode))
+            self.updates_cb.setChecked(bool(core.check_updates))
             self.autostart.setChecked(bool(core.auto_start_windows))
             self.account_line.setText(self._account_text())
             self._fill_sessions([], core.config_manager.get_selected_session())
@@ -771,6 +816,14 @@ class MainWindow(QMainWindow):
             core.get_saves_settings(False)  # the RPC loop picks it up by itself, no restart needed
         except Exception as e:
             gui_log(f"Режим телефона: {e}", core.LogType.Error)
+
+    def _toggle_updates(self, checked):
+        try:
+            core.config_manager.set_setting('UserSettings', 'check_updates', str(bool(checked)))
+            core.get_saves_settings(False)
+        except Exception as e:
+            gui_log(f"Проверка обновлений: {e}", core.LogType.Error)
+        self._check_update()  # hides the button when switched off, looks right away when switched on
 
     def _phone_status_text(self, state):
         if not core.YNISON_AVAILABLE:
