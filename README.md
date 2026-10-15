@@ -6,6 +6,7 @@
 [![Language](https://img.shields.io/github/languages/top/payzik/YandexMusicRPC)](https://github.com/payzik/YandexMusicRPC)
 [![OS](https://img.shields.io/badge/OS-Windows%2010%20%2F%2011-blue?logo=windows&logoColor=white)](https://github.com/payzik/YandexMusicRPC/releases/latest)
 [![License](https://img.shields.io/github/license/payzik/YandexMusicRPC)](LICENSE)
+[![Telegram](https://img.shields.io/badge/Telegram-%D0%BA%D0%B0%D0%BD%D0%B0%D0%BB-26A5E4?logo=telegram&logoColor=white)](https://t.me/+IVpuk2qCIwk1ODM6)
 
 **Discord Rich Presence для Яндекс Музыки на Windows.** Показывает в вашем профиле Discord, что вы слушаете: название трека, исполнителя, обложку, прогресс и паузу. Музыку можно слушать в приложении Яндекс Музыка на ПК или **на iPhone и Android** (режим телефона).
 
@@ -152,6 +153,9 @@ Unofficial project, not affiliated with Yandex or Discord. Fork of [FozerG/WinYa
 - Приложение обращается к серверам Яндекса (поиск трека, обложка, состояние плеера для режима телефона) и к локальному клиенту Discord. Иконки «играет» и «пауза» Discord сам подгружает с GitHub.
 - Если включена проверка обновлений, приложение раз в несколько часов делает один анонимный запрос к GitHub (виден ваш IP-адрес, как у любого запроса в интернет). Ничего, кроме номера версии, не отправляется и не скачивается. Проверку можно отключить в «Настройках».
 - Журнал `app.log` лежит только у вас на диске; токен в него не записывается (видна только его длина).
+
+## Новости и обсуждение
+Обновления, анонсы и вопросы по приложению: [Telegram-канал](https://t.me/+IVpuk2qCIwk1ODM6).
 
 ## Баги и предложения
 Нашли ошибку? Создайте [Issue](../../issues) и приложите журнал (`%LOCALAPPDATA%\WinYandexMusicRPC\app.log`), предварительно проверив, что в нём нет ничего личного.
