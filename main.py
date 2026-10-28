@@ -50,7 +50,7 @@ CLIENT_ID_RU = '1217562797999784007' #Яндекс Музыка
 CLIENT_ID_RU_DECLINED = '1269826362399522849' #Яндекс Музыку (склонение для активности "Слушает")
 
 # Версия (tag) скрипта для проверки на актуальность через Github Releases
-CURRENT_VERSION = "v3.1.0"
+CURRENT_VERSION = "v3.1.1"
 
 # Ссылка на репозиторий
 REPO_URL = "https://github.com/payzik/YandexMusicRPC"
@@ -1161,7 +1161,7 @@ class Presence:
 
     # Метод для получения информации о текущем треке.
     @staticmethod
-    def _build_local_media_track(artist, title, position, playback, duration=None):
+    def _build_local_media_track(artist, title, position, playback, duration=None, name_key=None):
         """
         Build a Discord presence directly from Windows MediaSession metadata.
         Used for personal/uploaded Yandex Music tracks that are not found in the
@@ -1198,8 +1198,10 @@ class Presence:
         }
         # Must be the module-level variable, otherwise getTrack() re-searches the
         # Yandex catalog on every poll for tracks that are not in it.
+        # `name_key` is the identity getTrack() compares on the next poll (built from the raw
+        # Windows metadata); the shown artist/title may differ from it for tag-less files.
         global name_prev
-        name_prev = f"{artist} - {title}"
+        name_prev = name_key if name_key is not None else f"{artist} - {title}"
         return local_track
 
     _phone_cache = {}
@@ -1360,7 +1362,7 @@ class Presence:
                 except Exception as e:
                     log(f"Startup timeline refresh skipped: {e}", LogType.Default)
 
-            if not artist or not title:
+            if not title:
                 media_metadata_miss_count += 1
 
                 # One or several empty Windows metadata samples are normal during
@@ -1379,7 +1381,8 @@ class Presence:
                     return {'success': False}
 
                 # Only log after the grace period is exceeded, and don't spam:
-                log(
+                log_throttled(
+                    "metadata-incomplete",
                     "Yandex MediaProperties still incomplete after "
                     f"{MEDIA_METADATA_GRACE} polls; keeping the last valid state. "
                     f"Active app={current_media_info.get('app_name', 'Unknown App')} "
@@ -1398,8 +1401,15 @@ class Presence:
 
             media_metadata_miss_count = 0
             name_current = artist + " - " + title
+            # A title but no artist: a file the user uploaded by hand (no tags, so Yandex Music
+            # reports the file name). There is nothing to look up in the catalog; publish it as a
+            # local file instead of waiting for "complete" metadata that never comes.
+            local_without_artist = not artist
             if str(name_current) != name_prev:
-                log("Now listening to " + name_current)
+                if local_without_artist:
+                    log(f"Now listening to a local file: {clean_local_title(title)}")
+                else:
+                    log("Now listening to " + name_current)
             else: #Если песня уже играет, то не нужно ее искать повторно. Просто вернем её с актуальным статусом паузы и позиции.
                 if Presence.currentTrack is None:
                     return {'success': False}
@@ -1407,6 +1417,17 @@ class Presence:
                 currentTrack_copy["start-time"] = position
                 currentTrack_copy["playback"] = current_media_info['playback_status']
                 return currentTrack_copy
+
+            if local_without_artist:
+                file_artist, file_title = split_local_name(title)
+                return Presence._build_local_media_track(
+                    artist=file_artist or local_file_artist_label(),
+                    title=file_title or title,
+                    position=position,
+                    playback=current_media_info['playback_status'],
+                    duration=current_media_info.get('duration'),
+                    name_key=str(name_current),
+                )
 
             # Store the name only after a track was successfully resolved.
             # This allows retries when Windows briefly reports an incomplete/new session.
@@ -1591,6 +1612,31 @@ def Single_char(s):
     if len(s) == 1:
         return f'"{s}"'
     return s
+
+
+# Songs the user uploaded by hand have no catalog entry and often no artist tag: Yandex Music
+# then reports the *file name* (with its extension) as the title and an empty artist.
+_AUDIO_EXTENSION = re.compile(r"\.(mp3|m4a|m4b|aac|flac|wav|wave|ogg|oga|opus|wma|alac|aif|aiff|ape|wv|mka|mp2|mp4)$", re.IGNORECASE)
+_ARTIST_TITLE_SEPARATOR = re.compile(r"^(.+?)\s+[-–—]\s+(.+)$")
+
+
+def clean_local_title(name):
+    """File name -> readable title: no audio extension, no surrounding spaces."""
+    return _AUDIO_EXTENSION.sub("", (name or "").strip()).strip()
+
+
+def split_local_name(name):
+    """'Artist - Title' file names -> (artist, title); anything else -> ('', name)."""
+    name = clean_local_title(name)
+    m = _ARTIST_TITLE_SEPARATOR.match(name)
+    if m and m.group(1).strip() and m.group(2).strip():
+        return m.group(1).strip(), m.group(2).strip()
+    return "", name
+
+
+def local_file_artist_label():
+    """What to show instead of an artist for a local file that has no artist tag."""
+    return "Local file" if language_config == LanguageConfig.ENGLISH else "Локальный файл"
 
 class LogType(Enum):
     Default = 0
