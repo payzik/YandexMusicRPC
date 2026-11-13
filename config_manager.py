@@ -52,3 +52,18 @@ class ConfigManager:
 
     def set_selected_session(self, session_id):
         self.set_setting("UserSettings", "selected_session", session_id)
+
+    def get_gemini_model(self):
+        return self.get_setting("GeminiSettings", "model", fallback="gemini-3.8-flash")
+
+    def set_gemini_model(self, model):
+        self.set_setting("GeminiSettings", "model", model)
+
+    def get_recommendations_count(self):
+        try:
+            return int(self.get_setting("GeminiSettings", "count", fallback="6"))
+        except (ValueError, TypeError):
+            return 6
+
+    def set_recommendations_count(self, count):
+        self.set_setting("GeminiSettings", "count", str(count))

@@ -25,6 +25,8 @@ from PyQt6.QtWidgets import (
 )
 
 import main as core
+import history_manager as hist
+import gemini_recommender as gemini_rec
 
 
 APP_NAME = "WinYandexMusicRPC"
@@ -38,7 +40,7 @@ UPDATE_CHECK_EVERY_MS = 6 * 60 * 60 * 1000
 LOG_MAX_LINES = 1000
 COVER_SIZE = 160
 
-PAGE_OVERVIEW, PAGE_SETTINGS, PAGE_SESSIONS, PAGE_LOGS = range(4)
+PAGE_OVERVIEW, PAGE_SETTINGS, PAGE_SESSIONS, PAGE_RECOMMENDATIONS, PAGE_LOGS = range(5)
 
 # ---------------------------------------------------------------- palette / style
 
@@ -62,6 +64,14 @@ STYLE = Template(r'''
     #trackTitle { font-size: 26px; font-weight: 700; }
     #trackArtist { font-size: 17px; color: #c9c1e3; }
     #statValue { font-size: 16px; font-weight: 600; }
+
+    #recCard { background: $card; border: 1px solid $border; border-radius: 12px; }
+    #recCard:hover { border-color: $accent_lo; }
+    #recTitle { font-size: 16px; font-weight: 700; color: $text; }
+    #recArtist { font-size: 14px; font-weight: 600; color: $accent_hi; }
+    #recReason { font-size: 13px; color: $muted; }
+    #badgeAvail { background: rgba(74, 222, 128, 0.15); color: $ok; border-radius: 6px; padding: 2px 7px; font-size: 11px; font-weight: 600; }
+    #badgeSearch { background: rgba(143, 134, 173, 0.15); color: $muted; border-radius: 6px; padding: 2px 7px; font-size: 11px; font-weight: 600; }
 
     #pill { border-radius: 10px; padding: 5px 12px; background: $field; color: $muted; }
     #pill[kind="playing"] { background: rgba(139,92,246,0.18); color: $accent_hi; }
@@ -370,7 +380,7 @@ class MainWindow(QMainWindow):
 
         self.nav_group = QButtonGroup(self)
         self.nav_group.setExclusive(True)
-        for index, label in enumerate(["Обзор", "Настройки", "Сессии", "Журнал"]):
+        for index, label in enumerate(["Обзор", "Настройки", "Сессии", "AI Советы", "Журнал"]):
             button = SidebarButton(label)
             self.nav_group.addButton(button, index)
             sl.addWidget(button)
@@ -407,6 +417,7 @@ class MainWindow(QMainWindow):
         self.pages.addWidget(self._overview_page())
         self.pages.addWidget(self._scrollable(self._settings_page()))
         self.pages.addWidget(self._sessions_page())
+        self.pages.addWidget(self._recommendations_page())
         self.pages.addWidget(self._logs_page())
 
     def _check_update(self):
@@ -616,6 +627,60 @@ class MainWindow(QMainWindow):
         row.addWidget(self.logout_btn)
         account.body.addLayout(row)
         layout.addWidget(account)
+
+        gemini_card = Card("Нейросеть Gemini AI")
+        gemini_hint = QLabel("Gemini анализирует историю ваших прослушиваний и подбирает персональные музыкальные рекомендации, проверяя их доступность в Яндекс Музыке.")
+        gemini_hint.setObjectName("muted")
+        gemini_hint.setWordWrap(True)
+        gemini_card.body.addWidget(gemini_hint)
+
+        key_row = QHBoxLayout()
+        self.gemini_key_input = QLineEdit()
+        self.gemini_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.gemini_key_input.setPlaceholderText("Вставьте Gemini API ключ...")
+        key_row.addWidget(self.gemini_key_input, 1)
+
+        self.gemini_save_btn = QPushButton("Сохранить ключ")
+        self.gemini_save_btn.clicked.connect(self._save_gemini_key)
+        key_row.addWidget(self.gemini_save_btn)
+
+        self.gemini_clear_btn = QPushButton("Удалить")
+        self.gemini_clear_btn.setObjectName("danger")
+        self.gemini_clear_btn.clicked.connect(self._clear_gemini_key)
+        key_row.addWidget(self.gemini_clear_btn)
+        gemini_card.body.addLayout(key_row)
+
+        model_row = QHBoxLayout()
+        model_label = QLabel("Модель Gemini:")
+        model_row.addWidget(model_label)
+        self.gemini_model_box = QComboBox()
+        self.gemini_model_box.addItem("gemini-3.8-flash (рекомендуется)", "gemini-3.8-flash")
+        self.gemini_model_box.addItem("gemini-3.5-flash-lite (быстрее)", "gemini-3.5-flash-lite")
+        self.gemini_model_box.currentIndexChanged.connect(self._save_gemini_settings)
+        model_row.addWidget(self.gemini_model_box, 1)
+
+        recs_count_label = QLabel("Количество треков:")
+        model_row.addWidget(recs_count_label)
+        self.gemini_count_box = QComboBox()
+        for c in [4, 6, 8, 10]:
+            self.gemini_count_box.addItem(str(c), c)
+        self.gemini_count_box.currentIndexChanged.connect(self._save_gemini_settings)
+        model_row.addWidget(self.gemini_count_box)
+        gemini_card.body.addLayout(model_row)
+
+        status_row = QHBoxLayout()
+        self.gemini_status_label = QLabel("●  Ключ не настроен")
+        self.gemini_status_label.setObjectName("status")
+        status_row.addWidget(self.gemini_status_label)
+        status_row.addStretch()
+        get_key_btn = QPushButton("Получить бесплатный API ключ в Google AI Studio ↗")
+        get_key_btn.setObjectName("support")
+        get_key_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://aistudio.google.com/app/apikey")))
+        status_row.addWidget(get_key_btn)
+        gemini_card.body.addLayout(status_row)
+
+        layout.addWidget(gemini_card)
+
         layout.addStretch()
         return page
 
@@ -638,6 +703,67 @@ class MainWindow(QMainWindow):
         hint.setWordWrap(True)
         layout.addWidget(hint)
         layout.addStretch()
+        return page
+
+    def _recommendations_page(self):
+        page, layout = self._page()
+        layout.addWidget(self._title("AI Советы"))
+
+        control_card = Card("Генерация рекомендаций")
+        
+        mode_row = QHBoxLayout()
+        mode_label = QLabel("Режим:")
+        mode_row.addWidget(mode_label)
+        
+        self.rec_mode_box = QComboBox()
+        self.rec_mode_box.addItem("🔥 На основе недавних треков", "recent")
+        self.rec_mode_box.addItem("🎯 Похожее на текущий трек", "current")
+        self.rec_mode_box.addItem("✨ Музыкальные открытия (Discovery)", "discovery")
+        self.rec_mode_box.addItem("⚡ Энергичное и драйвовое", "energy")
+        self.rec_mode_box.addItem("☕ Спокойное и атмосферное", "chill")
+        mode_row.addWidget(self.rec_mode_box, 1)
+        
+        self.generate_recs_btn = QPushButton("Сгенерировать рекомендации")
+        self.generate_recs_btn.setObjectName("primary")
+        self.generate_recs_btn.clicked.connect(self._generate_recommendations)
+        mode_row.addWidget(self.generate_recs_btn)
+        control_card.body.addLayout(mode_row)
+
+        stats_row = QHBoxLayout()
+        self.rec_history_stats = QLabel("История: 0 треков")
+        self.rec_history_stats.setObjectName("muted")
+        stats_row.addWidget(self.rec_history_stats)
+        stats_row.addStretch()
+        
+        clear_hist_btn = QPushButton("Очистить историю")
+        clear_hist_btn.setObjectName("support")
+        clear_hist_btn.clicked.connect(self._clear_history_clicked)
+        stats_row.addWidget(clear_hist_btn)
+        control_card.body.addLayout(stats_row)
+
+        self.rec_status_label = QLabel("")
+        self.rec_status_label.setObjectName("muted")
+        self.rec_status_label.setWordWrap(True)
+        control_card.body.addWidget(self.rec_status_label)
+        self.rec_status_label.hide()
+
+        layout.addWidget(control_card)
+
+        # Scroll area for recommendation cards
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        self.recs_container = QWidget()
+        self.recs_layout = QVBoxLayout(self.recs_container)
+        self.recs_layout.setContentsMargins(0, 0, 0, 0)
+        self.recs_layout.setSpacing(10)
+        
+        self._show_empty_recommendations_placeholder()
+        scroll.setWidget(self.recs_container)
+        layout.addWidget(scroll, 1)
+
         return page
 
     def _logs_page(self):
@@ -731,6 +857,8 @@ class MainWindow(QMainWindow):
         self.pages.setCurrentIndex(index)
         if index == PAGE_SESSIONS:
             self._refresh_sessions()
+        elif index == PAGE_RECOMMENDATIONS:
+            self._on_recommendations_tab_opened()
 
     def _refresh_sessions_if_visible(self):
         if self.isVisible() and self.pages.currentIndex() == PAGE_SESSIONS:
@@ -772,7 +900,10 @@ class MainWindow(QMainWindow):
     def _load_settings_to_ui(self):
         # Programmatic changes must not fire _save_settings/_set_session: they would
         # write half-loaded widget values (defaults) back over the saved config.
-        guarded = (self.activity, self.buttons, self.language, self.strong, self.autostart, self.session_box, self.phone_cb, self.updates_cb)
+        guarded = (
+            self.activity, self.buttons, self.language, self.strong, self.autostart,
+            self.session_box, self.phone_cb, self.updates_cb, self.gemini_model_box, self.gemini_count_box
+        )
         for w in guarded:
             w.blockSignals(True)
         try:
@@ -792,6 +923,17 @@ class MainWindow(QMainWindow):
             self.autostart.setChecked(bool(core.auto_start_windows))
             self.account_line.setText(self._account_text())
             self._fill_sessions([], core.config_manager.get_selected_session())
+
+            # Load Gemini settings
+            saved_model = core.config_manager.get_gemini_model()
+            m_idx = self.gemini_model_box.findData(saved_model)
+            if m_idx >= 0:
+                self.gemini_model_box.setCurrentIndex(m_idx)
+            saved_count = core.config_manager.get_recommendations_count()
+            c_idx = self.gemini_count_box.findData(saved_count)
+            if c_idx >= 0:
+                self.gemini_count_box.setCurrentIndex(c_idx)
+            self._update_gemini_key_status()
         except Exception:
             gui_log(traceback.format_exc(), core.LogType.Error)
         finally:
@@ -1027,6 +1169,214 @@ class MainWindow(QMainWindow):
         elif state == "waiting":
             tip += "\nОжидание Discord…"
         self._tray.setToolTip(tip)
+
+    # ------------------------------------------------------------ gemini & recommendations
+
+    def _update_gemini_key_status(self):
+        has_key = bool(gemini_rec.get_gemini_api_key())
+        if has_key:
+            self.gemini_status_label.setText("●  Ключ настроен")
+            self.gemini_status_label.setStyleSheet(f"color: {PALETTE['ok']};")
+            self.gemini_key_input.setPlaceholderText("•••••••••••••••• (ключ сохранен)")
+        else:
+            self.gemini_status_label.setText("●  Ключ не настроен")
+            self.gemini_status_label.setStyleSheet(f"color: {PALETTE['err']};")
+            self.gemini_key_input.setPlaceholderText("Вставьте Gemini API ключ...")
+
+    def _save_gemini_key(self):
+        key = self.gemini_key_input.text().strip()
+        if not key:
+            QMessageBox.warning(self, "Ключ Gemini", "Пожалуйста, введите API ключ.")
+            return
+        if gemini_rec.set_gemini_api_key(key):
+            self.gemini_key_input.clear()
+            self._update_gemini_key_status()
+            gui_log("Ключ Gemini API успешно сохранен в Windows Credential Manager.", core.LogType.Notification)
+            QMessageBox.information(self, "Ключ Gemini", "API ключ успешно сохранен!")
+        else:
+            QMessageBox.critical(self, "Ошибка", "Не удалось сохранить ключ в хранилище Windows.")
+
+    def _clear_gemini_key(self):
+        gemini_rec.delete_gemini_api_key()
+        self.gemini_key_input.clear()
+        self._update_gemini_key_status()
+        gui_log("Ключ Gemini API удален.", core.LogType.Notification)
+
+    def _save_gemini_settings(self, *_):
+        try:
+            model = self.gemini_model_box.currentData()
+            count = self.gemini_count_box.currentData()
+            core.config_manager.set_gemini_model(model)
+            core.config_manager.set_recommendations_count(count)
+        except Exception as e:
+            gui_log(f"Не удалось сохранить настройки Gemini: {e}", core.LogType.Error)
+
+    def _on_recommendations_tab_opened(self):
+        count = hist.history_manager.get_total_count()
+        self.rec_history_stats.setText(f"В истории прослушиваний: {count} треков")
+
+    def _clear_history_clicked(self):
+        reply = QMessageBox.question(
+            self, "Очистка истории",
+            "Вы уверены, что хотите очистить локальную историю прослушанных треков?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            hist.history_manager.clear_history()
+            self._on_recommendations_tab_opened()
+            self._show_empty_recommendations_placeholder()
+            gui_log("История прослушиваний очищена.", core.LogType.Notification)
+
+    def _show_empty_recommendations_placeholder(self):
+        while self.recs_layout.count():
+            item = self.recs_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        placeholder = Card()
+        label = QLabel("Выберите режим и нажмите кнопку «Сгенерировать рекомендации» выше.\n"
+                       "Gemini проанализирует историю ваших треков и подберет персональный плейлист со ссылками на Яндекс Музыку.")
+        label.setObjectName("muted")
+        label.setWordWrap(True)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        placeholder.body.addWidget(label)
+        self.recs_layout.addWidget(placeholder)
+        self.recs_layout.addStretch()
+
+    def _generate_recommendations(self):
+        if not gemini_rec.get_gemini_api_key():
+            self.rec_status_label.setText("⚠ Gemini API ключ не настроен! Перейдите во вкладку «Настройки» и сохраните ключ.")
+            self.rec_status_label.setStyleSheet(f"color: {PALETTE['warn']};")
+            self.rec_status_label.show()
+            return
+
+        mode = self.rec_mode_box.currentData()
+        model = core.config_manager.get_gemini_model()
+        count = core.config_manager.get_recommendations_count()
+        current_track = core.Presence.currentTrack
+
+        self.generate_recs_btn.setEnabled(False)
+        self.generate_recs_btn.setText("Генерация…")
+        self.rec_status_label.setText("🤖 Gemini анализирует треки и проверяет каталог Яндекс Музыки…")
+        self.rec_status_label.setStyleSheet(f"color: {PALETTE['accent_hi']};")
+        self.rec_status_label.show()
+
+        def task():
+            return gemini_rec.fetch_recommendations(
+                mode=mode,
+                current_track=current_track,
+                ya_client=core.Presence.client,
+                model=model,
+                limit=count
+            )
+
+        self._run_bg(task, on_result=self._on_recommendations_result, on_error=self._on_recommendations_error)
+
+    def _on_recommendations_result(self, result):
+        self.generate_recs_btn.setEnabled(True)
+        self.generate_recs_btn.setText("Сгенерировать рекомендации")
+
+        if not result or not result.get("success"):
+            err = (result.get("error") if result else "Неизвестная ошибка") or "Не удалось получить рекомендации"
+            self.rec_status_label.setText(f"❌ {err}")
+            self.rec_status_label.setStyleSheet(f"color: {PALETTE['err']};")
+            gui_log(f"Gemini: {err}", core.LogType.Error)
+            return
+
+        recs = result.get("recommendations", [])
+        if not recs:
+            self.rec_status_label.setText("Рекомендации не найдены. Попробуйте другой режим.")
+            self.rec_status_label.setStyleSheet(f"color: {PALETTE['warn']};")
+            return
+
+        self.rec_status_label.setText(f"✓ Подобрано {len(recs)} треков ({result.get('mode_title', '')})")
+        self.rec_status_label.setStyleSheet(f"color: {PALETTE['ok']};")
+        self._display_recommendations(recs)
+
+    def _on_recommendations_error(self, err):
+        self.generate_recs_btn.setEnabled(True)
+        self.generate_recs_btn.setText("Сгенерировать рекомендации")
+        self.rec_status_label.setText(f"❌ Ошибка: {err}")
+        self.rec_status_label.setStyleSheet(f"color: {PALETTE['err']};")
+        gui_log(f"Gemini ошибка: {err}", core.LogType.Error)
+
+    def _display_recommendations(self, recs):
+        while self.recs_layout.count():
+            item = self.recs_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        dpr = self.devicePixelRatioF()
+        for track in recs:
+            card = QFrame()
+            card.setObjectName("recCard")
+            card_layout = QHBoxLayout(card)
+            card_layout.setContentsMargins(14, 12, 14, 12)
+            card_layout.setSpacing(14)
+
+            # Album cover
+            cover_lbl = QLabel()
+            cover_lbl.setFixedSize(68, 68)
+            cover_lbl.setPixmap(placeholder_cover(68, dpr))
+            card_layout.addWidget(cover_lbl)
+
+            cover_url = track.get("cover_url")
+            if cover_url:
+                self._load_rec_cover(cover_lbl, cover_url)
+
+            # Info
+            info_layout = QVBoxLayout()
+            info_layout.setSpacing(4)
+
+            title_row = QHBoxLayout()
+            title_lbl = QLabel(track.get("title", "—"))
+            title_lbl.setObjectName("recTitle")
+            title_row.addWidget(title_lbl)
+
+            avail = track.get("available_on_yandex", False)
+            badge = QLabel("✓ В Яндекс Музыке" if avail else "🔍 Поиск в Яндексе")
+            badge.setObjectName("badgeAvail" if avail else "badgeSearch")
+            title_row.addWidget(badge)
+            title_row.addStretch()
+            info_layout.addLayout(title_row)
+
+            artist_lbl = QLabel(track.get("artist", "—"))
+            artist_lbl.setObjectName("recArtist")
+            info_layout.addWidget(artist_lbl)
+
+            reason_lbl = QLabel(f"💡 {track.get('reason', '')}")
+            reason_lbl.setObjectName("recReason")
+            reason_lbl.setWordWrap(True)
+            info_layout.addWidget(reason_lbl)
+
+            card_layout.addLayout(info_layout, 1)
+
+            # Listen button
+            track_url = track.get("url")
+            if track_url:
+                listen_btn = QPushButton("Слушать ↗")
+                listen_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                listen_btn.clicked.connect(lambda _, u=track_url: QDesktopServices.openUrl(QUrl(u)))
+                card_layout.addWidget(listen_btn)
+
+            self.recs_layout.addWidget(card)
+
+        self.recs_layout.addStretch()
+
+    def _load_rec_cover(self, label_widget, url):
+        dpr = self.devicePixelRatioF()
+        def task():
+            import requests
+            r = requests.get(url, timeout=5)
+            r.raise_for_status()
+            return r.content
+
+        def on_done(data):
+            pm = QPixmap()
+            if pm.loadFromData(data):
+                label_widget.setPixmap(rounded_pixmap(pm, 68, 10, dpr))
+
+        self._run_bg(task, on_result=on_done)
 
     # ------------------------------------------------------------ cover
 

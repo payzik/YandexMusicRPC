@@ -1,5 +1,9 @@
 from winrt.windows.media.control import GlobalSystemMediaTransportControlsSessionManager as MediaManager
 from config_manager import ConfigManager
+try:
+    from history_manager import history_manager
+except Exception:
+    history_manager = None
 from itertools import permutations
 from packaging import version
 from datetime import datetime, timedelta, timezone
@@ -1115,6 +1119,11 @@ class Presence:
                         else:
                             Presence._update(**Presence._playing_presence(ongoing_track))
                     Presence.currentTrack = ongoing_track
+                    if history_manager and ongoing_track.get('success'):
+                        try:
+                            history_manager.record_track(ongoing_track)
+                        except Exception:
+                            pass
                 else:
                     if ongoing_track['success'] and ongoing_track["playback"] != PlaybackStatus.Playing.name and not Presence.paused:
                         Presence.paused = True

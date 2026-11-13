@@ -20,3 +20,5 @@ Pillow
 psutil
 # Ynison (phone mode) exists only in the unreleased main branch; pinned to a tested commit.
 yandex-music[ynison] @ git+https://github.com/MarshalX/yandex-music-api.git@2776335c1fc8e4af2b6ab77e196bde251fc6be49
+google-genai>=3.3.0
+pydantic
