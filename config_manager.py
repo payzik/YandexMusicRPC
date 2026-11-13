@@ -54,7 +54,7 @@ class ConfigManager:
         self.set_setting("UserSettings", "selected_session", session_id)
 
     def get_gemini_model(self):
-        return self.get_setting("GeminiSettings", "model", fallback="gemini-3.8-flash")
+        return self.get_setting("GeminiSettings", "model", fallback="gemini-3.5-flash-lite")
 
     def set_gemini_model(self, model):
         self.set_setting("GeminiSettings", "model", model)

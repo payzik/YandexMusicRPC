@@ -654,8 +654,9 @@ class MainWindow(QMainWindow):
         model_label = QLabel("Модель Gemini:")
         model_row.addWidget(model_label)
         self.gemini_model_box = QComboBox()
-        self.gemini_model_box.addItem("gemini-3.8-flash (рекомендуется)", "gemini-3.8-flash")
-        self.gemini_model_box.addItem("gemini-3.5-flash-lite (быстрее)", "gemini-3.5-flash-lite")
+        self.gemini_model_box.addItem("gemini-3.5-flash-lite (быстрая и стабильная, рекомендуем)", "gemini-3.5-flash-lite")
+        self.gemini_model_box.addItem("gemini-3.5-flash (сбалансированная)", "gemini-3.5-flash")
+        self.gemini_model_box.addItem("gemini-3.8-flash (высокое качество)", "gemini-3.8-flash")
         self.gemini_model_box.currentIndexChanged.connect(self._save_gemini_settings)
         model_row.addWidget(self.gemini_model_box, 1)
 

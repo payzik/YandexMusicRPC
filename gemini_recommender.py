@@ -9,7 +9,7 @@ from history_manager import history_manager
 
 KEYRING_SERVICE = 'WinYandexMusicRPC'
 KEYRING_GEMINI_KEY = 'gemini_api_key'
-DEFAULT_MODEL = 'gemini-3.8-flash'
+DEFAULT_MODEL = 'gemini-3.5-flash-lite'
 
 class TrackRecommendation(BaseModel):
     artist: str = Field(description="Имя исполнителя или название группы")
@@ -168,25 +168,39 @@ def fetch_recommendations(
 4. Верни ровно {limit} рекомендаций.
 """
 
-    try:
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model=model,
-            contents=prompt,
-            config={
-                "response_mime_type": "application/json",
-                "response_json_schema": RecommendationsPayload.model_json_schema(),
-            }
-        )
+    models_to_try = [model]
+    for alt in ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash']:
+        if alt not in models_to_try:
+            models_to_try.append(alt)
 
-        response_text = response.text or ""
-        parsed = json.loads(response_text)
-        candidates = parsed.get("recommendations", [])
-    except Exception as e:
+    client = genai.Client(api_key=api_key)
+    candidates = []
+    last_error = None
+
+    for candidate_model in models_to_try:
+        try:
+            response = client.models.generate_content(
+                model=candidate_model,
+                contents=prompt,
+                config={
+                    "response_mime_type": "application/json",
+                    "response_json_schema": RecommendationsPayload.model_json_schema(),
+                }
+            )
+            response_text = response.text or ""
+            parsed = json.loads(response_text)
+            candidates = parsed.get("recommendations", [])
+            if candidates:
+                break
+        except Exception as e:
+            last_error = e
+            continue
+
+    if not candidates and last_error:
         return {
             "success": False,
             "recommendations": [],
-            "error": f"Ошибка запроса к Gemini: {e}",
+            "error": f"Ошибка запроса к Gemini: {last_error}",
             "mode_title": mode_title
         }
 
