@@ -13,7 +13,7 @@
 *English: a Discord Rich Presence (RPC) app for Yandex Music on Windows. It shows the track you are listening to in your Discord status, including music playing on your iPhone or Android phone. [Jump to English](#english).*
 
 <p align="center">
-  <img src="docs/screenshots/overview.png?v=3.2.0" alt="Yandex Music RPC: главное окно приложения со статусом Discord" width="720">
+  <img src="docs/screenshots/overview.png" alt="Yandex Music RPC: главное окно приложения со статусом Discord" width="720">
 </p>
 
 [**⬇ Скачать последнюю версию**](../../releases/latest) · [Как это настроить](#быстрый-старт) · [Частые вопросы](#частые-вопросы) · [English](#english)
@@ -79,7 +79,7 @@ pyinstaller --noconfirm gui_app.spec
 
 ### Настройки
 <p align="center">
-  <img src="docs/screenshots/settings.png?v=3.2.0" alt="Yandex Music RPC: настройки приложения" width="620">
+  <img src="docs/screenshots/settings.png" alt="Yandex Music RPC: настройки приложения" width="620">
 </p>
 
 | Параметр | Что делает |
@@ -96,10 +96,6 @@ pyinstaller --noconfirm gui_app.spec
 | Количество треков | Сколько рекомендаций подбирать за один раз (от 4 до 10) |
 
 ### AI Советы и рекомендации (Gemini)
-<p align="center">
-  <img src="docs/screenshots/recommendations.png?v=3.2.0" alt="Yandex Music RPC: AI Советы Gemini" width="620">
-</p>
-
 Приложение накапливает историю прослушанных треков в локальной базе данных SQLite (`%LOCALAPPDATA%\WinYandexMusicRPC\history.db`). Во вкладке **«AI Советы»** нейросеть Gemini выступает в роли личного музыкального куратора:
 - **5 режимов подбора:** на основе недавней истории, похожее на текущий трек, музыкальные открытия (Discovery), энергичное и драйвовое, спокойное и атмосферное.
 - **Проверка в каталоге Яндекс Музыки:** для каждой рекомендации от AI приложение автоматически находит официальный трек, загружает обложку и даёт прямую ссылку на трек/альбом.
