@@ -3,7 +3,7 @@ from PyInstaller.utils.hooks import collect_submodules
 
 hiddenimports = collect_submodules('winrt.windows.media.control')
 # Phone mode (Ynison): websockets and the protobuf stack are imported lazily at runtime.
-for _pkg in ('yandex_music.ynison', 'websockets', 'betterproto', 'grpclib', 'google.genai', 'pydantic'):
+for _pkg in ('yandex_music.ynison', 'websockets', 'betterproto', 'grpclib'):
     hiddenimports += collect_submodules(_pkg)
 
 analysis = Analysis(
@@ -18,6 +18,8 @@ analysis = Analysis(
         'winrt.windows.media',
         'history_manager',
         'gemini_recommender',
+        'google.genai',
+        'pydantic',
     ],
     hookspath=[], hooksconfig={}, runtime_hooks=[], excludes=[], noarchive=False,
 )
