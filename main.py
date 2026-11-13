@@ -54,7 +54,7 @@ CLIENT_ID_RU = '1217562797999784007' #Яндекс Музыка
 CLIENT_ID_RU_DECLINED = '1269826362399522849' #Яндекс Музыку (склонение для активности "Слушает")
 
 # Версия (tag) скрипта для проверки на актуальность через Github Releases
-CURRENT_VERSION = "v3.1.1"
+CURRENT_VERSION = "v3.2.0"
 
 # Ссылка на репозиторий
 REPO_URL = "https://github.com/payzik/YandexMusicRPC"
