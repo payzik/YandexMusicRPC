@@ -1187,15 +1187,30 @@ class MainWindow(QMainWindow):
     def _save_gemini_key(self):
         key = self.gemini_key_input.text().strip()
         if not key:
-            QMessageBox.warning(self, "Ключ Gemini", "Пожалуйста, введите API ключ.")
+            box = QMessageBox(self)
+            box.setWindowTitle("Ключ Gemini")
+            box.setText("Пожалуйста, введите API ключ.")
+            box.setIcon(QMessageBox.Icon.Warning)
+            box.addButton("ОК", QMessageBox.ButtonRole.AcceptRole)
+            box.exec()
             return
         if gemini_rec.set_gemini_api_key(key):
             self.gemini_key_input.clear()
             self._update_gemini_key_status()
             gui_log("Ключ Gemini API успешно сохранен в Windows Credential Manager.", core.LogType.Notification)
-            QMessageBox.information(self, "Ключ Gemini", "API ключ успешно сохранен!")
+            box = QMessageBox(self)
+            box.setWindowTitle("Ключ Gemini")
+            box.setText("API ключ успешно сохранен!")
+            box.setIcon(QMessageBox.Icon.Information)
+            box.addButton("ОК", QMessageBox.ButtonRole.AcceptRole)
+            box.exec()
         else:
-            QMessageBox.critical(self, "Ошибка", "Не удалось сохранить ключ в хранилище Windows.")
+            box = QMessageBox(self)
+            box.setWindowTitle("Ошибка")
+            box.setText("Не удалось сохранить ключ в хранилище Windows.")
+            box.setIcon(QMessageBox.Icon.Critical)
+            box.addButton("ОК", QMessageBox.ButtonRole.AcceptRole)
+            box.exec()
 
     def _clear_gemini_key(self):
         gemini_rec.delete_gemini_api_key()
@@ -1217,12 +1232,15 @@ class MainWindow(QMainWindow):
         self.rec_history_stats.setText(f"В истории прослушиваний: {count} треков")
 
     def _clear_history_clicked(self):
-        reply = QMessageBox.question(
-            self, "Очистка истории",
-            "Вы уверены, что хотите очистить локальную историю прослушанных треков?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-        if reply == QMessageBox.StandardButton.Yes:
+        box = QMessageBox(self)
+        box.setWindowTitle("Очистка истории")
+        box.setText("Вы уверены, что хотите очистить локальную историю прослушанных треков?")
+        box.setIcon(QMessageBox.Icon.Question)
+        yes_btn = box.addButton("Да", QMessageBox.ButtonRole.YesRole)
+        no_btn = box.addButton("Нет", QMessageBox.ButtonRole.NoRole)
+        box.setDefaultButton(no_btn)
+        box.exec()
+        if box.clickedButton() == yes_btn:
             hist.history_manager.clear_history()
             self._on_recommendations_tab_opened()
             self._show_empty_recommendations_placeholder()

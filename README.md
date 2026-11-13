@@ -91,6 +91,17 @@ pyinstaller --noconfirm gui_app.spec
 | Режим телефона | См. выше |
 | Запускать с Windows | Автозапуск в трее |
 | Проверять обновления | Раз в несколько часов приложение спрашивает у GitHub, вышла ли новая версия |
+| Ключ Gemini API | Безопасное хранение ключа Google AI Studio в Windows Credential Manager для работы персональных рекомендаций |
+| Модель Gemini | Выбор нейросети (`gemini-3.5-flash-lite`, `gemini-3.5-flash`, `gemini-3.8-flash`) с авто-переключением при пиковых нагрузках |
+| Количество треков | Сколько рекомендаций подбирать за один раз (от 4 до 10) |
+
+### AI Советы и рекомендации (Gemini)
+Приложение накапливает историю прослушанных треков в локальной базе данных SQLite (`%LOCALAPPDATA%\WinYandexMusicRPC\history.db`). Во вкладке **«AI Советы»** нейросеть Gemini выступает в роли личного музыкального куратора:
+- **5 режимов подбора:** на основе недавней истории, похожее на текущий трек, музыкальные открытия (Discovery), энергичное и драйвовое, спокойное и атмосферное.
+- **Проверка в каталоге Яндекс Музыки:** для каждой рекомендации от AI приложение автоматически находит официальный трек, загружает обложку и даёт прямую ссылку на трек/альбом.
+- **Пояснение выбора:** для каждой песни куратор кратко объясняет, чем трек интересен и почему он подойдёт под ваше настроение.
+- **Отказоустойчивость:** если выбранная модель перегружена (ошибки 503/429), запрос автоматически переключается на резервные быстрые модели без прерывания работы.
+- **Бесплатный ключ:** можно получить за пару кликов на [Google AI Studio](https://aistudio.google.com/app/apikey).
 
 ## Частые вопросы
 
@@ -142,11 +153,12 @@ pyinstaller --noconfirm gui_app.spec
 ## English
 **Yandex Music RPC** is a Discord Rich Presence (RPC) app for [Yandex Music](https://music.yandex.ru) on Windows 10/11. It shows the track you are listening to (title, artist, cover, progress, pause state) in your Discord profile as "Listening to Yandex Music".
 
+- **AI Music Recommendations (Gemini):** a dedicated tab with personal music recommendations based on your listening history. Powered by Google Gemini with automatic verification and links in the Yandex Music catalog.
 - **Phone mode** (temporarily not working because Yandex's Ynison service is returning errors, see the Russian section above): music playing on your **iPhone or Android** phone is shown too, labelled "(on phone)". The app runs on your Windows PC (with Discord open) and reads the playback state of your Yandex account through the unofficial Ynison protocol (read-only). If Yandex Music is playing on the PC, the PC is always the source.
 - GUI, system tray, autostart with Windows, single instance, repeat-one and seek support.
 - Only the Yandex Music **desktop app** is detected as a source; browsers and other players are ignored.
 - Songs you uploaded yourself (local files) are shown too: if the file has no artist tag, the title comes from the file name and "Local file" is shown instead of the artist.
-- Your Yandex token is stored only locally in Windows Credential Manager and is never written to the log.
+- Your Yandex token and Gemini API key are stored only locally in Windows Credential Manager and are never written to the log.
 
 **Quick start:** download the latest zip from [Releases](../../releases/latest), unpack the whole folder, run `WinYandexMusicRPC.exe`, click "Запустить RPC" (Start RPC) and open Discord. For phone mode sign in under Settings. The interface is in Russian. To run from source: `pip install -r requirements.txt`, then `python gui_app.py` (Python 3.12 and Git required).
 
