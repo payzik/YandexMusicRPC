@@ -22,6 +22,8 @@ class HistoryManager:
 
     def _init_db(self):
         with self._get_connection() as conn:
+            conn.execute('PRAGMA journal_mode = WAL;')
+            conn.execute('PRAGMA synchronous = NORMAL;')
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS listening_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

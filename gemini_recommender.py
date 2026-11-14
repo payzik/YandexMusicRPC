@@ -3,7 +3,6 @@ import json
 import urllib.parse
 from typing import List, Dict, Optional, Any
 import keyring
-from pydantic import BaseModel, Field
 
 from history_manager import history_manager
 
@@ -11,13 +10,17 @@ KEYRING_SERVICE = 'WinYandexMusicRPC'
 KEYRING_GEMINI_KEY = 'gemini_api_key'
 DEFAULT_MODEL = 'gemini-3.5-flash-lite'
 
-class TrackRecommendation(BaseModel):
-    artist: str = Field(description="Имя исполнителя или название группы")
-    title: str = Field(description="Название трека или песни")
-    reason: str = Field(description="Краткое объяснение на русском языке (1-2 предложения), почему этот трек рекомендуется и чем он интересен")
+def _get_recommendations_schema():
+    from pydantic import BaseModel, Field
+    class TrackRecommendation(BaseModel):
+        artist: str = Field(description="Имя исполнителя или название группы")
+        title: str = Field(description="Название трека или песни")
+        reason: str = Field(description="Краткое объяснение на русском языке (1-2 предложения), почему этот трек рекомендуется и чем он интересен")
 
-class RecommendationsPayload(BaseModel):
-    recommendations: List[TrackRecommendation]
+    class RecommendationsPayload(BaseModel):
+        recommendations: List[TrackRecommendation]
+
+    return RecommendationsPayload.model_json_schema()
 
 
 def get_gemini_api_key() -> str:
@@ -184,7 +187,7 @@ def fetch_recommendations(
                 contents=prompt,
                 config={
                     "response_mime_type": "application/json",
-                    "response_json_schema": RecommendationsPayload.model_json_schema(),
+                    "response_json_schema": _get_recommendations_schema(),
                 }
             )
             response_text = response.text or ""

@@ -35,7 +35,7 @@
 - **AI Советы музыки (Gemini):** отдельная вкладка с персональными рекомендациями на основе вашей истории прослушиваний. Gemini анализирует музыкальный вкус, подбирает треки в нескольких режимах (недавнее, похожее на текущий трек, открытия, драйв, chill), объясняет свой выбор и автоматически проверяет наличие композиций в каталоге Яндекс Музыки со ссылками на прослушивание.
 - **Статус «Слушает Яндекс Музыку»** с обложкой, временем до конца трека, паузой и кнопками «Открыть в браузере» / «Открыть в приложении».
 - **Загруженные вами песни** (локальные файлы) тоже показываются, в том числе без тега исполнителя: вместо него подпись «Локальный файл», название берётся из имени файла без расширения. Если файл назван «Исполнитель - Название.mp3», исполнитель и название определяются автоматически.
-- **Режим телефона:** если музыка играет на iPhone или Android, в Discord показывается этот трек с пометкой «(на телефоне)». Если играет ПК, источником остаётся он. **Сейчас временно не работает по вине сервиса Яндекса**, см. [ниже](#режим-телефона).
+- **Режим телефона:** если музыка играет на iPhone или Android, в Discord показывается этот трек с пометкой «(на телефоне)». Если играет ПК, источником остаётся он. Подробнее см. в разделе [«Режим телефона»](#режим-телефона).
 - **Работа в трее:** крестик сворачивает окно, RPC продолжает работать. Полный выход через меню значка в трее. Второй запуск не плодит копии, а открывает уже работающее окно.
 - **Автозапуск с Windows:** приложение стартует свёрнутым в трей и само включает RPC.
 - **Уведомление об обновлениях:** если на GitHub вышла новая версия, в левом нижнем углу окна появляется кнопка «Доступна vX.Y.Z», по клику открывается страница загрузки. Само приложение ничего не скачивает и не устанавливает. Проверку можно отключить в «Настройках».
@@ -69,9 +69,9 @@ pyinstaller --noconfirm gui_app.spec
 
 ### Режим телефона
 
-> **Временно не работает (проверено 28.10.2026).** Сервер Ynison на стороне Яндекса отвечает ошибкой «Ynison service is temporary unavailable» (код 503) и просит клиентов не обращаться. Это не ошибка приложения: то же происходит и в оригинальном проекте, об этом сообщал его автор. Музыка с ПК работает как обычно, а режим телефона включится сам, когда Яндекс восстановит сервис (в приложении в это время в карточке «Режим телефона» показана ошибка).
+Включается галочкой в «Настройках» (по умолчанию включён) и требует входа в аккаунт Яндекса. Приложение следит за состоянием плеера вашего аккаунта через синхронизационный протокол Ynison (только чтение, управлять воспроизведением оно не умеет и не пытается) и, если играет телефон (iPhone или Android), показывает этот трек в вашем Discord статусе.
 
-Включается галочкой в «Настройках» (по умолчанию включён) и требует входа в аккаунт Яндекса. Приложение следит за состоянием плеера вашего аккаунта через протокол Ynison (только чтение, управлять воспроизведением оно не умеет и не пытается) и, если играет телефон, показывает этот трек.
+> Сервер Ynison на стороне Яндекса полностью функционирует. Если на ПК играет Яндекс Музыка, источником всегда остаётся ПК. Музыка с телефона отображается автоматически, когда воспроизведение на ПК остановлено.
 
 - Работает, пока на ПК запущены приложение с включённым RPC **и Discord**. Без включённого ПК режим телефона не работает.
 - Если на ПК играет Яндекс Музыка, источником всегда остаётся ПК. Телефон берётся, только когда ПК не играет.
@@ -157,7 +157,7 @@ pyinstaller --noconfirm gui_app.spec
 **Yandex Music RPC** is a Discord Rich Presence (RPC) app for [Yandex Music](https://music.yandex.ru) on Windows 10/11. It shows the track you are listening to (title, artist, cover, progress, pause state) in your Discord profile as "Listening to Yandex Music".
 
 - **AI Music Recommendations (Gemini):** a dedicated tab with personal music recommendations based on your listening history. Powered by Google Gemini with automatic verification and links in the Yandex Music catalog.
-- **Phone mode** (temporarily not working because Yandex's Ynison service is returning errors, see the Russian section above): music playing on your **iPhone or Android** phone is shown too, labelled "(on phone)". The app runs on your Windows PC (with Discord open) and reads the playback state of your Yandex account through the unofficial Ynison protocol (read-only). If Yandex Music is playing on the PC, the PC is always the source.
+- **Phone mode:** music playing on your **iPhone or Android** phone is shown too, labelled "(on phone)". The app runs on your Windows PC (with Discord open) and reads the playback state of your Yandex account through the Ynison protocol (read-only). If Yandex Music is playing on the PC, the PC is always the source.
 - GUI, system tray, autostart with Windows, single instance, repeat-one and seek support.
 - Only the Yandex Music **desktop app** is detected as a source; browsers and other players are ignored.
 - Songs you uploaded yourself (local files) are shown too: if the file has no artist tag, the title comes from the file name and "Local file" is shown instead of the artist.

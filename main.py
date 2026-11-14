@@ -8,16 +8,27 @@ from itertools import permutations
 from packaging import version
 from datetime import datetime, timedelta, timezone
 from yandex_music import Client, exceptions
-try:
-    # Phone mode (what plays on the phone, read from the account). Optional: without the
-    # extras (betterproto, websockets) or the Ynison-capable yandex-music build the app
-    # simply works without it.
-    from yandex_music.ynison import YnisonClientAsync, messages as ynison_messages, utils as ynison_utils
-    YNISON_AVAILABLE = True
-except Exception:
-    YNISON_AVAILABLE = False
+# Phone mode (what plays on the phone, read from the account). Loaded lazily when enabled.
+YNISON_AVAILABLE = None
+YnisonClientAsync = None
+ynison_messages = None
+ynison_utils = None
+
+def load_ynison() -> bool:
+    global YNISON_AVAILABLE, YnisonClientAsync, ynison_messages, ynison_utils
+    if YNISON_AVAILABLE is not None:
+        return YNISON_AVAILABLE
+    try:
+        from yandex_music.ynison import YnisonClientAsync as _YCA, messages as _ym, utils as _yu
+        YnisonClientAsync = _YCA
+        ynison_messages = _ym
+        ynison_utils = _yu
+        YNISON_AVAILABLE = True
+    except Exception:
+        YNISON_AVAILABLE = False
+    return YNISON_AVAILABLE
+
 from colorama import init, Fore, Style
-from win32com.client import Dispatch  # Импортируем Dispatch для создания COM объекта
 
 
 import concurrent.futures
@@ -54,7 +65,7 @@ CLIENT_ID_RU = '1217562797999784007' #Яндекс Музыка
 CLIENT_ID_RU_DECLINED = '1269826362399522849' #Яндекс Музыку (склонение для активности "Слушает")
 
 # Версия (tag) скрипта для проверки на актуальность через Github Releases
-CURRENT_VERSION = "v3.2.0"
+CURRENT_VERSION = "v3.2.1"
 
 # Ссылка на репозиторий
 REPO_URL = "https://github.com/payzik/YandexMusicRPC"
@@ -152,7 +163,7 @@ YNISON_RETRY_SECONDS = 30.0
 PRESENCE_POLL_INTERVAL = 0.25
 
 # How long a positive "Discord is running" answer is trusted (a full process scan is costly).
-DISCORD_CHECK_CACHE_SECONDS = 2.0
+DISCORD_CHECK_CACHE_SECONDS = 4.0
 
 # Hysteresis for contradictory Windows Media Control reports.
 # A real pause must be reflected immediately; only override Paused -> Playing
@@ -600,6 +611,7 @@ class PhoneWatcher:
 
     @classmethod
     async def _run(cls, token):
+        load_ynison()
         client = YnisonClientAsync(
             token,
             # Per machine: two PCs on one account must not push each other out of the session.
@@ -650,7 +662,7 @@ class PhoneWatcher:
     @classmethod
     def maintain(cls):
         """Start/stop the watcher to match the setting; returns True while phone mode is wanted."""
-        want = bool(phone_mode and YNISON_AVAILABLE and ya_token)
+        want = bool(phone_mode and load_ynison() and ya_token)
         if want and not cls.running():
             now = time.monotonic()
             if now >= cls._next_try:
@@ -682,8 +694,10 @@ class Presence:
 
     @staticmethod
     def is_discord_running() -> bool:
-        # The main loop asks this ~4 times per second; scanning every process each
-        # time is expensive, so a positive answer is trusted for a couple of seconds.
+        # If Discord RPC is already connected, Discord is running
+        if Presence.rpc is not None:
+            Presence._discord_seen_at = time.monotonic()
+            return True
         now = time.monotonic()
         if now - Presence._discord_seen_at < DISCORD_CHECK_CACHE_SECONDS:
             return True
@@ -1765,6 +1779,7 @@ def toggle_auto_start_windows():
 
     def create_shortcut(target, shortcut_path, description="", arguments=""):
         pythoncom.CoInitialize()  # Инициализируем COM библиотеки
+        from win32com.client import Dispatch
         shell = Dispatch('WScript.Shell')  # Создаем объект для работы с ярлыками
         shortcut = shell.CreateShortcut(shortcut_path)  # Создаем ярлык
         shortcut.TargetPath = target  # Устанавливаем путь к исполняемому файлу

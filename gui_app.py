@@ -278,7 +278,22 @@ def rounded_pixmap(source, size, radius, dpr):
     return out
 
 
+_PLACEHOLDER_CACHE = {}
+_COVER_PIXMAP_CACHE = {}
+_HTTP_SESSION = None
+
+def get_http_session():
+    global _HTTP_SESSION
+    if _HTTP_SESSION is None:
+        import requests
+        _HTTP_SESSION = requests.Session()
+    return _HTTP_SESSION
+
+
 def placeholder_cover(size, dpr):
+    key = (int(size), float(dpr))
+    if key in _PLACEHOLDER_CACHE:
+        return _PLACEHOLDER_CACHE[key]
     px = int(size * dpr)
     pm = QPixmap(px, px)
     pm.fill(Qt.GlobalColor.transparent)
@@ -295,6 +310,7 @@ def placeholder_cover(size, dpr):
     p.drawText(pm.rect(), Qt.AlignmentFlag.AlignCenter, "♫")
     p.end()
     pm.setDevicePixelRatio(dpr)
+    _PLACEHOLDER_CACHE[key] = pm
     return pm
 
 
@@ -969,7 +985,7 @@ class MainWindow(QMainWindow):
         self._check_update()  # hides the button when switched off, looks right away when switched on
 
     def _phone_status_text(self, state):
-        if not core.YNISON_AVAILABLE:
+        if not core.load_ynison():
             return "Недоступен"
         if not core.phone_mode:
             return "Выключен"
@@ -1384,25 +1400,42 @@ class MainWindow(QMainWindow):
 
     def _load_rec_cover(self, label_widget, url):
         dpr = self.devicePixelRatioF()
+        cache_key = (url, 68, 10, dpr)
+        cached = _COVER_PIXMAP_CACHE.get(cache_key)
+        if cached:
+            label_widget.setPixmap(cached)
+            return
+
         def task():
-            import requests
-            r = requests.get(url, timeout=5)
+            s = get_http_session()
+            r = s.get(url, timeout=5)
             r.raise_for_status()
             return r.content
 
         def on_done(data):
             pm = QPixmap()
             if pm.loadFromData(data):
-                label_widget.setPixmap(rounded_pixmap(pm, 68, 10, dpr))
+                res = rounded_pixmap(pm, 68, 10, dpr)
+                if len(_COVER_PIXMAP_CACHE) > 32:
+                    _COVER_PIXMAP_CACHE.pop(next(iter(_COVER_PIXMAP_CACHE)))
+                _COVER_PIXMAP_CACHE[cache_key] = res
+                label_widget.setPixmap(res)
 
         self._run_bg(task, on_result=on_done)
 
     # ------------------------------------------------------------ cover
 
     def _load_cover(self, url):
+        dpr = self.devicePixelRatioF()
+        cache_key = (url, COVER_SIZE, 14, dpr)
+        cached = _COVER_PIXMAP_CACHE.get(cache_key)
+        if cached:
+            self.cover.setPixmap(cached)
+            return
+
         def task():
-            import requests
-            r = requests.get(url, timeout=5)
+            s = get_http_session()
+            r = s.get(url, timeout=5)
             r.raise_for_status()
             return url, r.content
         self._run_bg(task, self._set_cover)
@@ -1413,7 +1446,12 @@ class MainWindow(QMainWindow):
             return
         pixmap = QPixmap()
         if pixmap.loadFromData(data):
-            self.cover.setPixmap(rounded_pixmap(pixmap, COVER_SIZE, 14, self.devicePixelRatioF()))
+            dpr = self.devicePixelRatioF()
+            pm = rounded_pixmap(pixmap, COVER_SIZE, 14, dpr)
+            if len(_COVER_PIXMAP_CACHE) > 32:
+                _COVER_PIXMAP_CACHE.pop(next(iter(_COVER_PIXMAP_CACHE)))
+            _COVER_PIXMAP_CACHE[(url, COVER_SIZE, 14, dpr)] = pm
+            self.cover.setPixmap(pm)
 
     # ------------------------------------------------------------ logs / threads
 
@@ -1458,13 +1496,13 @@ def _selftest():
     The windowed exe has no console, so the verdict goes to selftest.txt next to the settings.
     """
     import os
-    lines = [f"version {core.CURRENT_VERSION}", f"ynison available: {core.YNISON_AVAILABLE}"]
+    lines = [f"version {core.CURRENT_VERSION}", f"ynison available: {core.load_ynison()}"]
     try:
         import websockets.asyncio.client  # noqa: F401  (lazily imported by the Ynison transport)
         from yandex_music.ynison import YnisonClientAsync, messages
         YnisonClientAsync("selftest", device_id=messages.generate_device_id(seed="selftest"))
         lines.append("ynison client constructed: OK")
-        ok = core.YNISON_AVAILABLE
+        ok = core.load_ynison()
         if "--selftest-live" in sys.argv:
             # Read-only: connects with the saved token and waits for the first state frame,
             # which proves the protobuf/websocket stack works inside the frozen build.
