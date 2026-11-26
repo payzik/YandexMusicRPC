@@ -1,5 +1,9 @@
-from winrt.windows.media.control import GlobalSystemMediaTransportControlsSessionManager as MediaManager
+from winrt.windows.media.control import (
+    GlobalSystemMediaTransportControlsSession as MediaSession,
+    GlobalSystemMediaTransportControlsSessionManager as MediaManager,
+)
 from config_manager import ConfigManager
+from yandex_music_session import is_yandex_music_source
 try:
     from history_manager import history_manager
 except Exception:
@@ -215,59 +219,14 @@ class PlaybackStatus(Enum):
     Playing = 4
     Stopped = 5
 
-# Список маркеров, по которым определяется источник Яндекс Музыки.
-# Это позволяет полностью игнорировать YouTube/Spotify/браузеры и другие Media Sessions.
-# Known Windows AppUserModel IDs for the desktop Yandex Music client.
-# Keep the exact desktop ID first so unrelated media apps (Telegram, browsers,
-# Spotify, YouTube, etc.) can never be selected as the target session.
-YANDEX_EXACT_SESSION_IDS = {
-    "ru.yandex.desktop.music",
-}
-
-YANDEX_SESSION_MARKERS = (
-    "yandexmusic",
-    "yandex.music",
-    "yandex-music",
-    "yandex_music",
-    "yandex music",
-    "ru.yandex.music",
-)
-
-
-def is_yandex_music_session(session) -> bool:
-    """Return True only for sessions that look like the Yandex Music app.
-
-    Windows AppUserModel IDs differ between the Microsoft Store build,
-    desktop/webview builds and older releases, so matching only one exact
-    identifier is too brittle.  We accept common Yandex Music identifiers
-    while explicitly rejecting browser/Yandex Browser style IDs.
-    """
+def is_yandex_music_session(session: MediaSession) -> bool:
+    """Read the source ID from a Windows media session and classify it."""
     try:
-        source_id = (session.source_app_user_model_id or "").strip().lower()
-    except Exception:
+        source_id = session.source_app_user_model_id
+    except OSError:
+        # A WinRT session can disappear between enumeration and inspection.
         return False
-
-    if not source_id:
-        return False
-
-    # Exact known desktop package/AUMID.
-    if source_id in YANDEX_EXACT_SESSION_IDS:
-        return True
-
-    # Strong positive matches for known/common Yandex Music identifiers.
-    if any(marker in source_id for marker in YANDEX_SESSION_MARKERS):
-        return True
-
-    # Some builds expose a generic Yandex AUMID containing both brand and
-    # product words rather than the package name.
-    if "yandex" in source_id and "music" in source_id:
-        return True
-
-    # Avoid accidentally accepting Yandex Browser sessions.
-    if "yandex" in source_id and "browser" in source_id:
-        return False
-
-    return False
+    return is_yandex_music_source(source_id)
 
 
 def fold_to_lap(live_seconds, lap_seconds):
