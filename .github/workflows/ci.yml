@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dev tools
-        run: python -m pip install pytest>=9,<10 ruff mypy keyring pydantic
+        run: python -m pip install "pytest>=9,<10" ruff mypy keyring pydantic
       - name: Ruff lint
         run: python -m ruff check .
       - name: Mypy type check
