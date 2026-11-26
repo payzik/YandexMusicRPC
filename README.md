@@ -58,6 +58,15 @@ pip install -r requirements.txt
 python gui_app.py
 ```
 
+### Тесты
+
+```bat
+python -m pip install -r requirements-test.txt
+python -m pytest tests
+```
+
+Для этих тестов не нужны зависимости приложения, Яндекс Музыка или Discord. Тесты с Windows API пропускаются на других системах.
+
 ### Сборка exe
 ```bat
 pyinstaller --noconfirm gui_app.spec
