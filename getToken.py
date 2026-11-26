@@ -1,10 +1,11 @@
-import sys
 import re
-from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEnginePage
+import sys
+
 from PyQt6.QtCore import QUrl, pyqtSignal
 from PyQt6.QtGui import QIcon
+from PyQt6.QtWebEngineCore import QWebEnginePage
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
 
 ACCESS_TOKEN_REGEX = r'access_token=([^&]*)'
 

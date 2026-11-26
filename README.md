@@ -51,21 +51,25 @@
 3. Нажмите «Запустить RPC» и откройте Discord. Для входа в аккаунт Яндекса: «Настройки» → «Войти / обновить токен».
 
 ### Из исходников
-Нужны Windows 10/11, Python (проверено на 3.12) и установленный [Git](https://git-scm.com/) (две зависимости ставятся из GitHub).
+Нужны Windows 10/11, Python 3.12+ (см. `pyproject.toml`) и установленный [Git](https://git-scm.com/) (две зависимости ставятся из GitHub).
 
 ```bat
-pip install -r requirements.txt
+pip install .
 python gui_app.py
 ```
 
-### Тесты
+*(Также поддерживается классический `pip install -r requirements.txt`.)*
+
+### Тесты и проверка кода
 
 ```bat
-python -m pip install -r requirements-test.txt
+python -m pip install -e ".[dev]"
 python -m pytest tests
+python -m ruff check .
+python -m mypy
 ```
 
-Для этих тестов не нужны зависимости приложения, Яндекс Музыка или Discord. Тесты с Windows API пропускаются на других системах.
+Для запуска `pytest` не нужны зависимости приложения, Яндекс Музыка или Discord. Тесты с Windows API пропускаются на других системах.
 
 ### Сборка exe
 ```bat

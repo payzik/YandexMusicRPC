@@ -1,0 +1,86 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "win-yandex-music-rpc"
+version = "3.2.2"
+description = "Yandex Music Discord Rich Presence for Windows with GUI, phone mode (Ynison) and AI music recommendations."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
+dependencies = [
+    "pypresence @ git+https://github.com/qwertyquerty/pypresence.git@e941a582d0aa920d5e51301fbc9744d6ab4a9603",
+    "winrt-Windows.Foundation.Collections",
+    "winrt-Windows.Storage.Streams",
+    "winrt-Windows.Media.Control",
+    "winrt-Windows.Foundation",
+    "winrt-Windows.Media",
+    "winrt-runtime",
+    "winrt-sdk",
+    "PyQt6",
+    "PyQt6-WebEngine",
+    "packaging",
+    "requests",
+    "colorama",
+    "pystray",
+    "keyring",
+    "pywin32",
+    "Pillow",
+    "psutil",
+    "yandex-music[ynison] @ git+https://github.com/MarshalX/yandex-music-api.git@2776335c1fc8e4af2b6ab77e196bde251fc6be49",
+    "google-genai>=3.3.0",
+    "pydantic",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9,<10",
+    "ruff>=0.11",
+    "mypy>=1.14",
+]
+build = [
+    "pyinstaller==6.5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/payzik/YandexMusicRPC"
+Repository = "https://github.com/payzik/YandexMusicRPC"
+Issues = "https://github.com/payzik/YandexMusicRPC/issues"
+
+[tool.setuptools]
+py-modules = [
+    "config_manager",
+    "contracts",
+    "gemini_recommender",
+    "getToken",
+    "gui_app",
+    "history_manager",
+    "main",
+    "yandex_music_session",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = true
+files = [
+    "contracts.py",
+    "config_manager.py",
+    "history_manager.py",
+    "gemini_recommender.py",
+    "yandex_music_session.py",
+    "tests",
+]

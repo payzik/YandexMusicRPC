@@ -1,24 +1,30 @@
-import os
 import json
+import os
 import urllib.parse
-from typing import List, Dict, Optional, Any
+from typing import Any
+
 import keyring
 
+from contracts import RecommendationItem, RecommendationsResult, TrackSnapshot
 from history_manager import history_manager
 
-KEYRING_SERVICE = 'WinYandexMusicRPC'
-KEYRING_GEMINI_KEY = 'gemini_api_key'
-DEFAULT_MODEL = 'gemini-3.5-flash-lite'
+KEYRING_SERVICE = "WinYandexMusicRPC"
+KEYRING_GEMINI_KEY = "gemini_api_key"
+DEFAULT_MODEL = "gemini-3.5-flash-lite"
 
-def _get_recommendations_schema():
+
+def _get_recommendations_schema() -> dict[str, Any]:
     from pydantic import BaseModel, Field
+
     class TrackRecommendation(BaseModel):
         artist: str = Field(description="Имя исполнителя или название группы")
         title: str = Field(description="Название трека или песни")
-        reason: str = Field(description="Краткое объяснение на русском языке (1-2 предложения), почему этот трек рекомендуется и чем он интересен")
+        reason: str = Field(
+            description="Краткое объяснение на русском языке (1-2 предложения), почему этот трек рекомендуется и чем он интересен"
+        )
 
     class RecommendationsPayload(BaseModel):
-        recommendations: List[TrackRecommendation]
+        recommendations: list[TrackRecommendation]
 
     return RecommendationsPayload.model_json_schema()
 
@@ -57,7 +63,7 @@ def delete_gemini_api_key() -> bool:
         return False
 
 
-def get_yandex_client(token: Optional[str] = None):
+def get_yandex_client(token: str | None = None) -> Any:
     """Initializes a Yandex Music client using the provided or saved token."""
     try:
         import yandex_music
@@ -72,11 +78,11 @@ def get_yandex_client(token: Optional[str] = None):
 
 def fetch_recommendations(
     mode: str = "recent",
-    current_track: Optional[Dict[str, Any]] = None,
-    ya_client=None,
+    current_track: TrackSnapshot | None = None,
+    ya_client: Any = None,
     model: str = DEFAULT_MODEL,
-    limit: int = 6
-) -> Dict[str, Any]:
+    limit: int = 6,
+) -> RecommendationsResult:
     """
     Calls Gemini to generate music recommendations, then verifies track availability on Yandex Music.
     Returns:
@@ -211,7 +217,7 @@ def fetch_recommendations(
     if ya_client is None:
         ya_client = get_yandex_client()
 
-    final_results = []
+    final_results: list[RecommendationItem] = []
     for cand in candidates:
         artist_name = (cand.get("artist") or "").strip()
         title_name = (cand.get("title") or "").strip()
@@ -220,14 +226,14 @@ def fetch_recommendations(
         if not artist_name or not title_name:
             continue
 
-        item_data = {
+        item_data: RecommendationItem = {
             "artist": artist_name,
             "title": title_name,
             "reason": reason,
             "url": f"https://music.yandex.ru/search?text={urllib.parse.quote(f'{artist_name} {title_name}')}",
             "cover_url": None,
             "available_on_yandex": False,
-            "track_id": None
+            "track_id": None,
         }
 
         if ya_client:

@@ -1,17 +1,20 @@
 import os
 import sqlite3
 import time
-from typing import List, Dict, Optional, Any
+from typing import cast
+
+from contracts import ArtistStat, HistoryEntry, TrackSnapshot
+
 
 class HistoryManager:
     """Manages the user's listening history in a local SQLite database."""
 
-    def __init__(self, temp_dir: Optional[str] = None):
+    def __init__(self, temp_dir: str | None = None) -> None:
         if not temp_dir:
-            temp_dir = os.path.join(os.getenv('LOCALAPPDATA', '.'), 'WinYandexMusicRPC')
+            temp_dir = os.path.join(os.getenv("LOCALAPPDATA", "."), "WinYandexMusicRPC")
         os.makedirs(temp_dir, exist_ok=True)
-        self.db_path = os.path.join(temp_dir, 'history.db')
-        self._last_recorded: Optional[tuple] = None
+        self.db_path = os.path.join(temp_dir, "history.db")
+        self._last_recorded: tuple[str, str] | None = None
         self._last_record_time: float = 0.0
         self._init_db()
 
@@ -20,7 +23,7 @@ class HistoryManager:
         conn.row_factory = sqlite3.Row
         return conn
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         with self._get_connection() as conn:
             conn.execute('PRAGMA journal_mode = WAL;')
             conn.execute('PRAGMA synchronous = NORMAL;')
@@ -45,7 +48,7 @@ class HistoryManager:
             ''')
             conn.commit()
 
-    def record_track(self, track: Dict[str, Any], min_interval_sec: float = 45.0) -> bool:
+    def record_track(self, track: TrackSnapshot, min_interval_sec: float = 45.0) -> bool:
         """
         Records a track if it's valid and wasn't recorded very recently.
         Returns True if recorded, False if skipped.
@@ -83,7 +86,7 @@ class HistoryManager:
         except Exception:
             return False
 
-    def get_recent_tracks(self, limit: int = 30) -> List[Dict[str, Any]]:
+    def get_recent_tracks(self, limit: int = 30) -> list[HistoryEntry]:
         """Returns the most recently played tracks."""
         try:
             with self._get_connection() as conn:
@@ -94,11 +97,11 @@ class HistoryManager:
                     LIMIT ?
                 ''', (limit,))
                 rows = cursor.fetchall()
-                return [dict(row) for row in rows]
+                return [cast(HistoryEntry, dict(row)) for row in rows]
         except Exception:
             return []
 
-    def get_top_artists(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_top_artists(self, limit: int = 10) -> list[ArtistStat]:
         """Returns the top listened artists and their play counts."""
         try:
             with self._get_connection() as conn:
@@ -111,7 +114,7 @@ class HistoryManager:
                     LIMIT ?
                 ''', (limit,))
                 rows = cursor.fetchall()
-                return [dict(row) for row in rows]
+                return [cast(ArtistStat, dict(row)) for row in rows]
         except Exception:
             return []
 

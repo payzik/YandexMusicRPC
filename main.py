@@ -1,29 +1,65 @@
+import asyncio
+import concurrent.futures
+import json
+import multiprocessing
+import os
+import platform
+import queue
+import re
+import subprocess
+import sys
+import threading
+import time
+import webbrowser
+import winreg
+from datetime import UTC, datetime, timedelta
+from enum import Enum
+from itertools import permutations
+
+import keyring
+import psutil
+import pypresence
+import pystray
+import pythoncom
+import requests
+import win32con
+import win32console
+import win32gui
+from colorama import Fore, Style, init
+from packaging import version
+from PIL import Image
+from pypresence.types import ActivityType
 from winrt.windows.media.control import (
     GlobalSystemMediaTransportControlsSession as MediaSession,
+)
+from winrt.windows.media.control import (
     GlobalSystemMediaTransportControlsSessionManager as MediaManager,
 )
+from yandex_music import Client, exceptions
+
 from config_manager import ConfigManager
 from yandex_music_session import is_yandex_music_source
+
 try:
     from history_manager import history_manager
 except Exception:
     history_manager = None
-from itertools import permutations
-from packaging import version
-from datetime import datetime, timedelta, timezone
-from yandex_music import Client, exceptions
+
 # Phone mode (what plays on the phone, read from the account). Loaded lazily when enabled.
 YNISON_AVAILABLE = None
 YnisonClientAsync = None
 ynison_messages = None
 ynison_utils = None
 
+
 def load_ynison() -> bool:
     global YNISON_AVAILABLE, YnisonClientAsync, ynison_messages, ynison_utils
     if YNISON_AVAILABLE is not None:
         return YNISON_AVAILABLE
     try:
-        from yandex_music.ynison import YnisonClientAsync as _YCA, messages as _ym, utils as _yu
+        from yandex_music.ynison import YnisonClientAsync as _YCA
+        from yandex_music.ynison import messages as _ym
+        from yandex_music.ynison import utils as _yu
         YnisonClientAsync = _YCA
         ynison_messages = _ym
         ynison_utils = _yu
@@ -32,44 +68,14 @@ def load_ynison() -> bool:
         YNISON_AVAILABLE = False
     return YNISON_AVAILABLE
 
-from colorama import init, Fore, Style
 
-
-import concurrent.futures
-import multiprocessing
-import platform
-import queue
-import subprocess
-import webbrowser
-import pystray
-import win32gui
-import win32con
-import win32console
-import threading
-import pypresence
-from pypresence.types import ActivityType
-import keyring
-import requests
-import asyncio
-import psutil
-import string
-import json
-import time
-import re
-import sys
-import os
-import winreg
-import threading
-import pythoncom
-from enum import Enum
-from PIL import Image
 # Идентификатор клиента Discord для Rich Presence
 CLIENT_ID_EN = '1269807014393942046' #Yandex Music
 CLIENT_ID_RU = '1217562797999784007' #Яндекс Музыка
 CLIENT_ID_RU_DECLINED = '1269826362399522849' #Яндекс Музыку (склонение для активности "Слушает")
 
 # Версия (tag) скрипта для проверки на актуальность через Github Releases
-CURRENT_VERSION = "v3.2.1"
+CURRENT_VERSION = "v3.2.2"
 
 # Ссылка на репозиторий
 REPO_URL = "https://github.com/payzik/YandexMusicRPC"
@@ -85,7 +91,7 @@ SUPPORT_URL = "https://boosty.to/yandexmusicrpc"
 # (Опционально) Личный токен Яндекс.Музыки с подпиской Плюс (https://github.com/MarshalX/yandex-music-api/discussions/513)
 # - Используется для поиска треков которые не показываются без авторизации
 # - Используется при использовании скрипта из стран где бесплатная Яндекс.Музыка не работает
-ya_token = str()
+ya_token = ''
 
 # Флаг для поиска трека с 100% совпадением названия и автора. Иначе будет найден близкий результат.
 strong_find = True
@@ -102,10 +108,10 @@ check_updates = True
 
 # --------- Переменные ниже являются временными и не требуют изменения.
 # Переменная для хранения предыдущего трека и избежания дублирования обновлений.
-name_prev = str()
+name_prev = ''
 
 # Переменая для хранения полного пути к иконке
-icoPath = str()
+icoPath = ''
 
 # Очередь для передачи результатов между процессами
 result_queue = multiprocessing.Queue()
@@ -439,7 +445,7 @@ async def get_media_info():
         live_position = position_seconds
         if inferred_status == PlaybackStatus.Playing.name:
             try:
-                age = (datetime.now(timezone.utc) - timeline.last_updated_time).total_seconds()
+                age = (datetime.now(UTC) - timeline.last_updated_time).total_seconds()
                 live_position += max(0.0, age) * (playback_info.playback_rate or 1.0)
             except Exception:
                 pass
@@ -1497,7 +1503,7 @@ class Presence:
                     'playback': current_media_info['playback_status'],
                     'og-image': "https://" + track.og_image[:-2] + "400x400"
                 }
-        except asyncio.TimeoutError:
+        except TimeoutError:
             log("Timeout: get_media_info() took more than 10 seconds", LogType.Error)
         except Exception as exception:
             Handle_exception(exception)
@@ -1552,7 +1558,8 @@ def Handle_exception(exception): # Обработка json ошибок из Yan
         return
 
     # The same failure repeats on every poll (4 times a second); report it once in a while.
-    _log = lambda text, type=LogType.Default: log_throttled(f"exc:{exception}", text, type)
+    def _log(text, type=LogType.Default):
+        log_throttled(f"exc:{exception}", text, type)
 
     json_str = str(exception).replace("'", '"')
     match = re.search(r'({.*?})', json_str)
@@ -1705,9 +1712,9 @@ def GetLastVersion(repoUrl):
         if version.parse(CURRENT_VERSION) < version.parse(latest_version):
             log(f"A new version has been released on GitHub. You are using - {CURRENT_VERSION}. A new version - {latest_version}, you can download it at {repoUrl + '/releases/tag/' + latest_version}", LogType.Notification)
         elif version.parse(CURRENT_VERSION) == version.parse(latest_version):
-            log(f"You are using the latest version of the script")
+            log("You are using the latest version of the script")
         else:
-            log(f"You are using the beta version of the script", LogType.Notification)
+            log("You are using the beta version of the script", LogType.Notification)
 
     except requests.exceptions.RequestException as e:
         log(f"Error getting latest version: {e}", LogType.Error)
@@ -1753,7 +1760,7 @@ def toggle_auto_start_windows():
                 exe_path, exe_args = _autostart_command()  # Что именно запускать при входе в Windows
                 shortcut_path = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'YaMusicRPC.lnk')  # Определяем путь для ярлыка в автозагрузке
                 create_shortcut(exe_path, shortcut_path, arguments=exe_args)  # Создаем ярлык в автозагрузке
-            except: # Автозапуск через изменение в реестре
+            except Exception: # Автозапуск через изменение в реестре
                 exe_path = f'"{_autostart_command()[0]}" {_autostart_command()[1]}'
                 key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run', 0, winreg.KEY_SET_VALUE)  # Открываем ключ реестра для автозапуска программ
                 winreg.SetValueEx(key, 'YaMusicRPC', 0, winreg.REG_SZ, exe_path)  # Устанавливаем новый параметр в реестре с именем 'YaMusicRPC' и значением пути к исполняемому файлу
@@ -1818,7 +1825,7 @@ def get_account_name():
         user_info = Presence.client.me.account
         account_name = user_info.display_name
         if not account_name:
-            return f"None"
+            return "None"
         return account_name
     except exceptions.UnauthorizedError:
         return "Invalid token."
@@ -1826,8 +1833,8 @@ def get_account_name():
     except exceptions.NetworkError:
         return "Network error."
 
-    except Exception as e:
-        return f"None"
+    except Exception:
+        return "None"
 
 # Функция для загрузки сохраненных настроек. Если настройки отсутствуют, используются значения по умолчанию из fallback.
 def get_saves_settings(fromStart = False):
@@ -1880,7 +1887,7 @@ def run_async(coro, timeout=15):
         return future.result(timeout=timeout)
     except concurrent.futures.TimeoutError:
         future.cancel()
-        raise asyncio.TimeoutError()
+        raise TimeoutError() from None
 
 def create_session_toggle_menu(icon):
     try:
@@ -2151,7 +2158,7 @@ def update_token_task(icon_path, result_queue):
 
 def Init_yaToken(forceGet = False):
     global ya_token
-    token = str()
+    token = ""
 
     # Already logged in with a saved token: do not repeat the network round trip.
     if not forceGet and ya_token and Presence.client:

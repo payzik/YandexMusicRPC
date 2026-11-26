@@ -11,23 +11,46 @@ from datetime import datetime
 from html import escape
 from string import Template
 
-from PyQt6.QtCore import QPointF, Qt, QTimer, QObject, QUrl, pyqtSignal
+from PyQt6.QtCore import QObject, QPointF, Qt, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import (
-    QColor, QDesktopServices, QFont, QIcon, QLinearGradient, QPainter, QPainterPath, QPen,
-    QPixmap, QPolygonF,
+    QColor,
+    QDesktopServices,
+    QFont,
+    QIcon,
+    QLinearGradient,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPixmap,
+    QPolygonF,
 )
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtWidgets import (
-    QApplication, QButtonGroup, QCheckBox, QComboBox, QFrame, QGridLayout,
-    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox,
-    QPlainTextEdit, QProgressBar, QPushButton, QScrollArea, QStackedWidget,
-    QSystemTrayIcon, QVBoxLayout, QWidget,
+    QApplication,
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QPlainTextEdit,
+    QProgressBar,
+    QPushButton,
+    QScrollArea,
+    QStackedWidget,
+    QSystemTrayIcon,
+    QVBoxLayout,
+    QWidget,
 )
 
-import main as core
-import history_manager as hist
 import gemini_recommender as gemini_rec
-
+import history_manager as hist
+import main as core
 
 APP_NAME = "WinYandexMusicRPC"
 STARTUP_FLAG = "--run-through-startup"
@@ -1507,6 +1530,7 @@ def _selftest():
             # Read-only: connects with the saved token and waits for the first state frame,
             # which proves the protobuf/websocket stack works inside the frozen build.
             import time
+
             import keyring
             core.ya_token = keyring.get_password('WinYandexMusicRPC', 'token') or ''
             core.phone_mode = True
