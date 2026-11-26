@@ -60,6 +60,17 @@ python gui_app.py
 
 *(Также поддерживается классический `pip install -r requirements.txt`.)*
 
+### SteamOS / Steam Deck
+В Desktop Mode на Steam Deck (требуется Python 3.12+):
+
+```bash
+git clone https://github.com/payzik/YandexMusicRPC.git
+cd YandexMusicRPC
+bash install_steamos.sh
+```
+
+Скрипт устанавливает зависимости в `~/.local/share/WinYandexMusicRPC/venv` (не затрагивается обновлениями SteamOS), создаёт ярлык «Yandex Music RPC» и включает фоновый сервис `systemd --user` (`--headless`) для работы даже в **Gaming Mode**. На Steam Deck приложение автоматически читает треки по MPRIS (из клиента Яндекс Музыки в меню «Мультимедиа»), находит Flatpak-сокет Discord и показывает статус **«Яндекс Музыку (на Steam Deck)»**.
+
 ### Тесты и проверка кода
 
 ```bat

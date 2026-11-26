@@ -18,6 +18,7 @@ analysis = Analysis(
         'winrt.windows.media',
         'contracts',
         'history_manager',
+        'linux_platform',
         'gemini_recommender',
         'yandex_music_session',
         'google.genai',

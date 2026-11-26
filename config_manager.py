@@ -3,13 +3,14 @@ import os
 from enum import Enum
 from typing import TypeVar
 
+from linux_platform import get_app_data_dir
+
 E = TypeVar("E", bound=Enum)
 
 
 class ConfigManager:
     def __init__(self, config_file: str = "settings.ini", temp_dir_name: str = "WinYandexMusicRPC") -> None:
-        base_dir = os.getenv("LOCALAPPDATA") or "."
-        self.temp_dir: str = os.path.join(base_dir, temp_dir_name)
+        self.temp_dir: str = get_app_data_dir(temp_dir_name)
         if not os.path.exists(self.temp_dir):
             os.makedirs(self.temp_dir)
 

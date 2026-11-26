@@ -639,7 +639,12 @@ class MainWindow(QMainWindow):
         layout.addWidget(phone)
 
         app = Card("Приложение")
-        self.autostart = QCheckBox("Запускать вместе с Windows (сразу в трее, RPC включается сам)")
+        autostart_label = (
+            "Запускать вместе со SteamOS / Linux (сразу в трее, RPC включается сам)"
+            if sys.platform != "win32"
+            else "Запускать вместе с Windows (сразу в трее, RPC включается сам)"
+        )
+        self.autostart = QCheckBox(autostart_label)
         self.autostart.toggled.connect(self._toggle_autostart)
         app.body.addWidget(self.autostart)
         self.updates_cb = QCheckBox("Проверять обновления (раз в несколько часов запрос к GitHub)")
@@ -1139,7 +1144,7 @@ class MainWindow(QMainWindow):
         if track and track.get('source') == 'phone':
             set_text(self.stat_source, f"Телефон ({track.get('device') or '-'})")
         elif track:
-            set_text(self.stat_source, "Этот компьютер")
+            set_text(self.stat_source, "Steam Deck" if core.is_steam_deck() else "Этот компьютер")
         else:
             set_text(self.stat_source, "-")
 
@@ -1555,13 +1560,23 @@ def _selftest():
     return 0 if lines[-1] == "result: OK" else 1
 
 
+def _run_headless():
+    """Run RPC in the background without a Qt window (for SteamOS Gaming Mode / systemd)."""
+    core.get_saves_settings(True)
+    core.Init_yaToken(False)
+    core.Presence.start()
+    return 0
+
+
 def main():
     if "--selftest" in sys.argv:
         return _selftest()
+    if "--headless" in sys.argv:
+        return _run_headless()
     QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
-    app.setFont(QFont("Segoe UI", 10))
+    app.setFont(QFont("Segoe UI" if sys.platform == "win32" else "Noto Sans", 10))
     # The window hides to the tray on close; quitting is explicit (MainWindow.quit_app).
     app.setQuitOnLastWindowClosed(False)
 

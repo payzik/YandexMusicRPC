@@ -4,6 +4,7 @@ import time
 from typing import cast
 
 from contracts import ArtistStat, HistoryEntry, TrackSnapshot
+from linux_platform import get_app_data_dir
 
 
 class HistoryManager:
@@ -11,7 +12,7 @@ class HistoryManager:
 
     def __init__(self, temp_dir: str | None = None) -> None:
         if not temp_dir:
-            temp_dir = os.path.join(os.getenv("LOCALAPPDATA", "."), "WinYandexMusicRPC")
+            temp_dir = get_app_data_dir("WinYandexMusicRPC")
         os.makedirs(temp_dir, exist_ok=True)
         self.db_path = os.path.join(temp_dir, "history.db")
         self._last_recorded: tuple[str, str] | None = None

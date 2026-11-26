@@ -11,7 +11,6 @@ import sys
 import threading
 import time
 import webbrowser
-import winreg
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from itertools import permutations
@@ -19,26 +18,47 @@ from itertools import permutations
 import keyring
 import psutil
 import pypresence
-import pystray
-import pythoncom
 import requests
-import win32con
-import win32console
-import win32gui
 from colorama import Fore, Style, init
 from packaging import version
 from PIL import Image
 from pypresence.types import ActivityType
-from winrt.windows.media.control import (
-    GlobalSystemMediaTransportControlsSession as MediaSession,
-)
-from winrt.windows.media.control import (
-    GlobalSystemMediaTransportControlsSessionManager as MediaManager,
-)
 from yandex_music import Client, exceptions
 
 from config_manager import ConfigManager
+from linux_platform import (
+    ensure_discord_ipc_env,
+    get_mpris_media_info,
+    get_mpris_session_ids,
+    is_in_linux_autostart,
+    is_steam_deck,
+    set_linux_autostart,
+)
 from yandex_music_session import is_yandex_music_source
+
+if sys.platform == "win32":
+    import winreg
+
+    import pystray
+    import pythoncom
+    import win32con
+    import win32console
+    import win32gui
+    from winrt.windows.media.control import (
+        GlobalSystemMediaTransportControlsSession as MediaSession,
+    )
+    from winrt.windows.media.control import (
+        GlobalSystemMediaTransportControlsSessionManager as MediaManager,
+    )
+else:
+    winreg = None  # type: ignore[assignment]
+    pystray = None
+    pythoncom = None
+    win32con = None
+    win32console = None
+    win32gui = None
+    MediaSession = None
+    MediaManager = None
 
 try:
     from history_manager import history_manager
@@ -255,8 +275,10 @@ async def _refresh_media_manager(reason):
     log_throttled(f"media-manager-refresh:{reason}", f"{reason} Windows MediaManager...", LogType.Default, interval=3600.0)
 
 
-# Функция для получения информации о текущем мультимедийном контенте через Windows SDK
+# Функция для получения информации о текущем мультимедийном контенте через Windows SDK или MPRIS (Linux/SteamOS)
 async def get_media_info():
+    if sys.platform != "win32":
+        return get_mpris_media_info(config_manager.get_selected_session())
     global media_sessions, playing_inference_count, last_logged_session_ids, _last_manager_refresh_at
     if media_sessions is None:
         try:
@@ -486,6 +508,8 @@ async def get_media_info():
     raise Exception('The music is not playing right now.')
 
 async def get_session_ids(only_yandex=False):
+    if sys.platform != "win32":
+        return get_mpris_session_ids()
     global media_sessions
     manager = media_sessions
     if manager is None:
@@ -651,7 +675,10 @@ class Presence:
     effective_playback_status = PlaybackStatus.Unknown.name
     last_presence_position = None
     last_presence_track = None
-    exe_names = ["Discord.exe", "DiscordCanary.exe", "DiscordPTB.exe", "Vesktop.exe"]
+    exe_names = [
+        "Discord.exe", "DiscordCanary.exe", "DiscordPTB.exe", "Vesktop.exe",
+        "discord", "Discord", "DiscordCanary", "DiscordPTB", "vesktop", "equibop",
+    ]
     # "stopped" | "waiting" (waiting for Discord) | "running"; read by the GUI.
     state = "stopped"
     last_source = None  # "pc" | "phone": where the published card comes from
@@ -665,6 +692,9 @@ class Presence:
             return True
         now = time.monotonic()
         if now - Presence._discord_seen_at < DISCORD_CHECK_CACHE_SECONDS:
+            return True
+        if sys.platform != "win32" and ensure_discord_ipc_env() is not None:
+            Presence._discord_seen_at = now
             return True
         names = {n.lower() for n in Presence.exe_names}
         try:
@@ -688,6 +718,8 @@ class Presence:
     @staticmethod
     def connect_rpc():
         try:
+            if sys.platform != "win32":
+                ensure_discord_ipc_env()
             client_id = CLIENT_ID_EN if language_config == LanguageConfig.ENGLISH else \
                 CLIENT_ID_RU_DECLINED if activityType_config == ActivityTypeConfig.LISTENING else CLIENT_ID_RU
             rpc = pypresence.Presence(client_id)
@@ -837,7 +869,22 @@ class Presence:
             args["small_image"] = f"{ASSETS_BASE_URL}/Playing.png"
             args["small_text"] = (f"Listening on {device}" if language_config == LanguageConfig.ENGLISH
                                   else f"Слушает на {device}")
+        elif is_steam_deck():
+            if Presence._name_override_active():
+                args["name"] = Presence._steam_deck_card_name()
+            args["small_image"] = f"{ASSETS_BASE_URL}/Playing.png"
+            args["small_text"] = ("Listening on Steam Deck" if language_config == LanguageConfig.ENGLISH
+                                  else "Слушает на Steam Deck")
         return args
+
+    @staticmethod
+    def _steam_deck_card_name():
+        """Header of the Discord card while listening natively on Steam Deck."""
+        if language_config == LanguageConfig.ENGLISH:
+            return "Yandex Music (on Steam Deck)"
+        if activityType_config == ActivityTypeConfig.LISTENING:
+            return "Яндекс Музыку (на Steam Deck)"
+        return "Яндекс Музыка (на Steam Deck)"
 
     @staticmethod
     def _phone_card_name():
@@ -1728,11 +1775,13 @@ def toggle_strong_find():
     log(f'Bool strong_find set state: {strong_find}')
 
 def _autostart_command():
-    """(target, arguments) that Windows should run at logon."""
+    """(target, arguments) that the OS should run at logon."""
     if getattr(sys, 'frozen', False):
         return sys.executable, "--run-through-startup"
     # Running from source: the target must be an interpreter, not the .py file itself.
     script = os.path.abspath(sys.argv[0])
+    if sys.platform != "win32":
+        return sys.executable, f'"{script}" --run-through-startup'
     pythonw = os.path.join(os.path.dirname(sys.executable), 'pythonw.exe')
     interpreter = pythonw if os.path.exists(pythonw) else sys.executable
     return interpreter, f'"{script}" --run-through-startup'
@@ -1742,6 +1791,11 @@ def toggle_auto_start_windows():
     global auto_start_windows
     auto_start_windows = not auto_start_windows
     log(f'Bool auto_start_windows set state: {auto_start_windows}')
+
+    if sys.platform != "win32":
+        exe_path, exe_args = _autostart_command()
+        set_linux_autostart(auto_start_windows, f'"{exe_path}" {exe_args}')
+        return
 
     def create_shortcut(target, shortcut_path, description="", arguments=""):
         pythoncom.CoInitialize()  # Инициализируем COM библиотеки
@@ -1786,6 +1840,8 @@ def toggle_auto_start_windows():
     worker.join(10)
 
 def is_in_autostart(): # Функция, которая при запуске программы проверяет, есть ли программа в автозапуске. Используется при подгрузке стартовых параметров
+    if sys.platform != "win32":
+        return is_in_linux_autostart()
 
     def is_in_startup():
         shortcut_path = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'YaMusicRPC.lnk')  # Определяем путь к ярлыку
