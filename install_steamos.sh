@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Installer for SteamOS / Steam Deck (survives SteamOS immutable root updates
-# because everything lives inside ~/.local/share/WinYandexMusicRPC).
+# Installer for SteamOS / Steam Deck Desktop Mode (survives SteamOS immutable
+# root updates because everything lives inside ~/.local/share/WinYandexMusicRPC).
 
 APP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/WinYandexMusicRPC"
 VENV_DIR="$APP_DIR/venv"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "=== Installing WinYandexMusicRPC for SteamOS / Linux ==="
+echo "=== Installing WinYandexMusicRPC for SteamOS / Linux (Desktop Mode) ==="
 mkdir -p "$APP_DIR"
 
 if ! command -v python3 >/dev/null 2>&1; then
@@ -34,30 +34,4 @@ Terminal=false
 Categories=AudioVideo;Music;
 EOF
 
-# Background systemd user service so RPC works in Steam Gaming Mode too
-SYSTEMD_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
-mkdir -p "$SYSTEMD_DIR"
-cat > "$SYSTEMD_DIR/winyandexmusicrpc.service" <<EOF
-[Unit]
-Description=WinYandexMusicRPC (Yandex Music Discord Rich Presence)
-After=graphical-session.target
-
-[Service]
-Type=simple
-WorkingDirectory=$REPO_DIR
-ExecStart=$VENV_DIR/bin/python $REPO_DIR/gui_app.py --headless
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=default.target
-EOF
-
-if command -v systemctl >/dev/null 2>&1; then
-    systemctl --user daemon-reload || true
-    systemctl --user enable --now winyandexmusicrpc.service || true
-    echo "Background service enabled (works in Gaming Mode too)."
-fi
-
-echo "Done! Launch 'Yandex Music RPC' from Desktop Mode menu or check status:"
-echo "  systemctl --user status winyandexmusicrpc.service"
+echo "Done! Launch 'Yandex Music RPC' from the Desktop Mode application menu."

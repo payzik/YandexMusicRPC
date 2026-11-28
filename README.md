@@ -69,7 +69,7 @@ cd YandexMusicRPC
 bash install_steamos.sh
 ```
 
-Скрипт устанавливает зависимости в `~/.local/share/WinYandexMusicRPC/venv` (не затрагивается обновлениями SteamOS), создаёт ярлык «Yandex Music RPC» и включает фоновый сервис `systemd --user` (`--headless`) для работы даже в **Gaming Mode**. На Steam Deck приложение автоматически читает треки по MPRIS (из клиента Яндекс Музыки в меню «Мультимедиа»), находит Flatpak-сокет Discord и показывает статус **«Яндекс Музыку (на Steam Deck)»**.
+Скрипт устанавливает зависимости в `~/.local/share/WinYandexMusicRPC/venv` (не затрагивается обновлениями SteamOS) и создаёт ярлык «Yandex Music RPC» в меню приложений **Desktop Mode**. На Steam Deck приложение автоматически читает треки по MPRIS, находит Flatpak-сокет Discord и показывает статус **«Яндекс Музыку (на Steam Deck)»**. Работает в **Desktop Mode** (для Flatpak-версии Яндекс Музыки может потребоваться разрешение `flatpak override --user --own-name='org.mpris.MediaPlayer2.*' ru.yandex.Music` и запуск с флагом `--enable-features=MediaSessionService`).
 
 ### Тесты и проверка кода
 
